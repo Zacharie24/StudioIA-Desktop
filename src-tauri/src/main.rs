@@ -30,6 +30,7 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
+use tauri_plugin_updater::UpdaterExt;
 
 const BACKEND_HOST: &str = "127.0.0.1";
 const BACKEND_PORT: u16 = 8080;
@@ -210,12 +211,55 @@ fn build_tray(app: &tauri::App) -> tauri::Result<tauri::tray::TrayIcon> {
 }
 
 // ---------------------------------------------------------------------------
+// Mise à jour automatique (tauri-plugin-updater + GitHub Releases)
+// ---------------------------------------------------------------------------
+// Vérifie une version au démarrage (arrière-plan) et, si dispo, télécharge
+// l'installateur signé 'StudioIA-Setup.exe', le lance en silencieux puis quitte
+// l'app pour laisser l'installateur remplacer le shell et les fichiers. Ne
+// touche JAMAIS aux données utilisateur (%USERPROFILE%\StudioIA isolé) ni aux
+// modèles Ollama. Silencieux en cas d'échec (offline / pas de release / refus).
+fn spawn_update_check(handle: AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        // Laisse le backend démarrer (le dashboard s'afficher) avant d'engager
+        // un éventuel téléchargement.
+        std::thread::sleep(Duration::from_secs(10));
+
+        let Ok(updater) = handle.updater() else {
+            return;
+        };
+        let Ok(Some(update)) = updater.check().await else {
+            return; // à jour, ou réseau indisponible
+        };
+        eprintln!("[updater] version disponible : {}", update.version);
+
+        // download() renvoie déjà les octets VÉRIFIÉS par signature (pubkey).
+        match update.download(|_, _| {}, || {}).await {
+            Ok(bytes) => {
+                // Écrit l'installateur Inno Setup dans un fichier temporaire,
+                // puis le lance en silencieux (aucune dialog box).
+                let setup = std::env::temp_dir().join("StudioIA-Setup.exe");
+                if std::fs::write(&setup, &bytes).is_ok() {
+                    let _ = Command::new(&setup)
+                        .args(["/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-"])
+                        .spawn();
+                }
+                // Quitte l'app pour laisser l'installateur remplacer l'exe
+                // (le dossier d'install est réinscriptible, sans admin).
+                let _ = handle.exit(0);
+            }
+            Err(e) => eprintln!("[updater] échec du téléchargement : {e}"),
+        }
+    });
+}
+
+// ---------------------------------------------------------------------------
 // Point d'entrée
 // ---------------------------------------------------------------------------
 fn main() {
     tauri::Builder::default()
         .manage(BackendState(Mutex::new(None)))
         .manage(TrayState(Mutex::new(None)))
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             let root = app_root();
             let handle = app.handle().clone();
@@ -242,6 +286,9 @@ fn main() {
             .inner_size(1280.0, 820.0)
             .min_inner_size(960.0, 600.0)
             .build()?;
+
+            // 3b. Mise à jour automatique (arrière-plan), avant de bouger `handle`.
+            spawn_update_check(handle.clone());
 
             // 4. Attente du backend en arrière-plan, puis navigation.
             std::thread::spawn(move || {

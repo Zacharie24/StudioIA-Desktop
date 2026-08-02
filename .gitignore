@@ -43,3 +43,9 @@ installer/_test_*.log
 
 # ===== Secrets locaux (dev) =====
 config.local.json
+
+# ===== Clés de signature (updater) =====
+installer/keys/
+
+# ===== Dependances npm (cli tauri) =====
+src-tauri/node_modules/

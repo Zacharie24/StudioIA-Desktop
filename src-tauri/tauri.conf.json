@@ -16,6 +16,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -24,5 +25,12 @@
       "icons/icon.png"
     ]
   },
-  "plugins": {}
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/Zacharie24/StudioIA-Desktop/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNCQzg5QkU4NzlCNDQ0RTIKUldUaVJMUjU2SnZJTyt6azF4eVB5ejUybzl5SnRVV3doTmNxWHVkRWUvS0tTc05DZFA0SFVRUFAK"
+    }
+  }
 }
