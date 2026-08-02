@@ -82,28 +82,66 @@ XTTS_DIR         = chemin_data("xtts")
 
 # --- Configuration ----------------------------------------------------------------
 def config_path():
-    """Chemin du config.json effectif : utilisateur (DATA_DIR) si présent,
-    sinon config embarquée (RACINE_APP)."""
-    p = chemin_data("config.json")
-    return p if p.exists() else chemin_app("config.json")
+    """Chemin du config.json effectif pour LECTURE directe.
+
+    Ordre :
+      1. utilisateur (DATA_DIR/config.json) — mode installé,
+      2. config.local.json (dev, gitignoré)  — mode source avec clés locales,
+      3. config embarquée (RACINE_APP/config.json).
+    """
+    if DATA_DIR != RACINE_APP:
+        p = chemin_data("config.json")
+        if p.exists():
+            return p
+    local = chemin_app("config.local.json")
+    if local.exists():
+        return local
+    return chemin_app("config.json")
 
 
 def lire_config():
-    """Lit la configuration effective (dict vide si introuvable/corrompue)."""
+    """Lit la configuration effective, en FUSIONNANT les sources :
+
+        config embarquée (défauts) < config.local.json (dev) < config utilisateur
+
+    Les clés réelles (API, etc.) vivent hors de la config embarquée committée
+    (config.local.json en source / DATA_DIR en installé) : ce merge les
+    réintroduit au moment de la lecture, sans jamais polluer config.json.
+    En mode source, DATA_DIR == RACINE_APP : la config embarquée sert de base
+    et config.local.json la surcharge (pas de 3e source dupliquée).
+    """
     import json
-    path = config_path()
-    try:
-        with open(path, "r", encoding="utf-8-sig") as f:
-            return json.load(f)
-    except Exception:
-        return {}
+
+    def _lire(path):
+        try:
+            with open(path, "r", encoding="utf-8-sig") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+
+    merged = {}
+    merged.update(_lire(chemin_app("config.json")))        # défauts embarqués
+    merged.update(_lire(chemin_app("config.local.json")))  # dev (gitignoré)
+    if DATA_DIR != RACINE_APP:
+        merged.update(_lire(chemin_data("config.json")))   # utilisateur (installé)
+    return merged
 
 
 def ecrire_config(donnees):
-    """Sauvegarde la configuration utilisateur (DATA_DIR), hors mode source."""
+    """Sauvegarde la configuration UTILISATEUR (jamais la config embarquée).
+
+    Mode installé : %USERPROFILE%\\StudioIA\\config.json (isolé du dossier app,
+    conservé pendant les mises à jour / désinstallation).
+    Mode source   : config.local.json (gitignoré) — pour ne jamais écrire des
+    valeurs locales ou clés réelles dans la config embarquée committée.
+    """
     import json
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    path = chemin_data("config.json")
+    if DATA_DIR != RACINE_APP:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        path = chemin_data("config.json")
+    else:
+        path = chemin_app("config.local.json")
+    path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(donnees, f, ensure_ascii=False, indent=2)
     return str(path)

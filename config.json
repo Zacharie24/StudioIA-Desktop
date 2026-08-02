@@ -28,8 +28,8 @@
   "verification_enabled": true,
   "verification_auto_regenerate": true,
   "verification_similarity_threshold": 0.3,
-  "youtube_api_key": "AIzaSyA_hvUV9j_tEtP64hHWawa7A1ja4iq1gnU",
-  "pexels_api_key": "vqcrN5yPPpf36NjTtZNTUZL1vob7oVObozV9Bzy1nmZfK8tn2QXYuNBw",
+  "youtube_api_key": "",
+  "pexels_api_key": "",
   "human_touch": {
     "actif": false,
     "mode": "ia",

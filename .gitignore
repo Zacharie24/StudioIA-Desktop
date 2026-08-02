@@ -40,3 +40,6 @@ settings.local.json
 # ===== Tests d'isolement (dev) =====
 installer/_test_data/
 installer/_test_*.log
+
+# ===== Secrets locaux (dev) =====
+config.local.json
