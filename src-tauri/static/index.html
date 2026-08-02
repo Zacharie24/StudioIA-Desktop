@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>StudioIA</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #243b76 0%, #3a2a6d 100%);
+    font-family: "Segoe UI", system-ui, sans-serif; color: #fff;
+  }
+  .box { text-align: center; }
+  .logo {
+    font-size: 52px; font-weight: 700; letter-spacing: 1px;
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+  }
+  .logo img { width: 56px; height: 56px; }
+  .sub { margin-top: 14px; font-size: 15px; opacity: .85; }
+  .spinner {
+    margin: 28px auto 0; width: 34px; height: 34px; border-radius: 50%;
+    border: 3px solid rgba(255,255,255,.25); border-top-color: #fff;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+  <div class="box">
+    <div class="logo"><img src="icons/32x32.png" alt=""> StudioIA</div>
+    <div class="sub">Démarrage du service StudioIA…</div>
+    <div class="spinner"></div>
+  </div>
+</body>
+</html>

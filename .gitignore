@@ -23,6 +23,7 @@ ComposIA/
 runtime/
 bundle-models/
 src-tauri/target/
+src-tauri/gen/
 installer/Output/
 installer/dist/
 *.exe
