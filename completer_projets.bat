@@ -1,9 +1,16 @@
 @echo off
 REM ============================================
-REM StudioIA-Next — Compléter les projets en cours
+REM StudioIA — Compléter les projets en cours
 REM ============================================
-TITLE StudioIA-Next - Completion Projets
+TITLE StudioIA - Completion Projets
 cd /d "C:\StudioIA-Desktop"
+
+REM Preferer le runtime Python embarque, sinon python du PATH
+if exist "C:\StudioIA-Desktop\runtime\python\python.exe" (
+    set "PY=C:\StudioIA-Desktop\runtime\python\python.exe"
+) else (
+    set "PY=python"
+)
 
 echo ============================================
 echo   Completion automatique des projets
@@ -24,7 +31,7 @@ if /i not "!confirm!"=="o" (
 
 echo.
 echo  Analyse des projets en cours...
-python -c "
+"%PY%" -c "
 import json
 from pathlib import Path
 
@@ -57,7 +64,7 @@ print(f'Total en cours: ...')
 "
 echo.
 echo  Pour lancer la generation:
-echo    python -c \"from modules.brain.generate_script import main; import sys; sys.argv=['gen.py','projects/NOM_PROJET']; main()\"
+echo    "%PY%" -c \"from modules.brain.generate_script import main; import sys; sys.argv=['gen.py','projects/NOM_PROJET']; main()\"
 echo.
 echo  Conseil: Lance le dashboard web pour suivre la progression.
 echo.

@@ -1,9 +1,16 @@
 @echo off
 REM ============================================
-REM StudioIA-Next — Lanceur automatique
+REM StudioIA — Lanceur automatique
 REM ============================================
-TITLE StudioIA-Next
+TITLE StudioIA
 cd /d "C:\StudioIA-Desktop"
+
+REM Preferer le runtime Python embarque, sinon python du PATH
+if exist "C:\StudioIA-Desktop\runtime\python\python.exe" (
+    set "PY=C:\StudioIA-Desktop\runtime\python\python.exe"
+) else (
+    set "PY=python"
+)
 
 :MENU
 cls
@@ -35,14 +42,14 @@ echo   StudioIA-Next — Dashboard Web
 echo ============================================
 echo.
 echo  Diagnostic en cours...
-python -c "from modules.diagnostic import executer_diagnostic; executer_diagnostic()"
+"%PY%" -c "from modules.diagnostic import executer_diagnostic; executer_diagnostic()"
 echo.
 echo  Demarrage du serveur web...
 echo.
 echo  Ouvre http://127.0.0.1:8080 dans ton navigateur
 echo  (Ctrl+C pour arreter)
 echo.
-python -m uvicorn web.main:app --host 127.0.0.1 --port 8080
+"%PY%" -m uvicorn web.main:app --host 127.0.0.1 --port 8080
 echo.
 echo  Appuie sur une touche pour revenir au menu...
 pause >nul
@@ -53,6 +60,9 @@ cls
 echo ============================================
 echo   StudioIA-Next — Interface Graphique
 echo ============================================
+echo.
+echo  (Utilise le Python du systeme : la GUI customtkinter
+echo   n'est pas dans le runtime embarqué)
 echo.
 python app_gui.py
 echo.
@@ -73,13 +83,13 @@ echo.
 set /p mode="Choix (1-2): "
 
 if "%mode%"=="1" (
-    python -c "from modules.automation.pipeline import executer_pipeline; import json; r=executer_pipeline(force_generer=False); print(json.dumps(r, ensure_ascii=False, indent=2))"
+    "%PY%" -c "from modules.automation.pipeline import executer_pipeline; import json; r=executer_pipeline(force_generer=False); print(json.dumps(r, ensure_ascii=False, indent=2))"
 ) else if "%mode%"=="2" (
     echo.
     echo  ATTENTION: La production complete va generer du contenu.
     set /p confirm="Confirmer (o/N): "
     if /i "!confirm!"=="o" (
-        python -c "from modules.automation.pipeline import executer_pipeline; import json; r=executer_pipeline(force_generer=True); print(json.dumps(r, ensure_ascii=False, indent=2))"
+        "%PY%" -c "from modules.automation.pipeline import executer_pipeline; import json; r=executer_pipeline(force_generer=True); print(json.dumps(r, ensure_ascii=False, indent=2))"
     ) else (
         echo Annule.
     )
@@ -97,7 +107,7 @@ echo ============================================
 echo   Diagnostic Systeme
 echo ============================================
 echo.
-python -c "from modules.diagnostic import executer_diagnostic; executer_diagnostic()"
+"%PY%" -c "from modules.diagnostic import executer_diagnostic; executer_diagnostic()"
 echo.
 echo  Appuie sur une touche pour revenir au menu...
 pause >nul
@@ -121,18 +131,18 @@ echo.
 set /p ccfg="Choix (1-5): "
 
 if "%ccfg%"=="1" (
-    python -c "import json; print(json.dumps(json.load(open('config.json','r')), ensure_ascii=False, indent=2))"
+    "%PY%" -c "import json; print(json.dumps(json.load(open('config.json','r')), ensure_ascii=False, indent=2))"
     pause
 ) else if "%ccfg%"=="2" (
     set /p ytkey="Cle YouTube API: "
-    python -c "import json; c=json.load(open('config.json','r')); c['youtube_api_key']='%ytkey%'; json.dump(c, open('config.json','w'), ensure_ascii=False, indent=2); print('OK')"
+    "%PY%" -c "import json; c=json.load(open('config.json','r')); c['youtube_api_key']='%ytkey%'; json.dump(c, open('config.json','w'), ensure_ascii=False, indent=2); print('OK')"
     pause
 ) else if "%ccfg%"=="3" (
     set /p pxkey="Cle Pexels API: "
-    python -c "import json; c=json.load(open('config.json','r')); c['pexels_api_key']='%pxkey%'; json.dump(c, open('config.json','w'), ensure_ascii=False, indent=2); print('OK')"
+    "%PY%" -c "import json; c=json.load(open('config.json','r')); c['pexels_api_key']='%pxkey%'; json.dump(c, open('config.json','w'), ensure_ascii=False, indent=2); print('OK')"
     pause
 ) else if "%ccfg%"=="4" (
-    python -c "
+    "%PY%" -c "
 import json
 c=json.load(open('config.json','r'))
 from core.profiles.profile_manager import get_manager
@@ -143,7 +153,7 @@ for i,pr in enumerate(p):
     print(f'  {i+1}) {pr.get(\"manifest\",{}).get(\"name\",pr[\"id\"])} ({pr[\"id\"]})')
 "
     set /p psel="Numero du profil: "
-    python -c "
+    "%PY%" -c "
 import json; c=json.load(open('config.json','r'))
 from core.profiles.profile_manager import get_manager
 ps=get_manager().lister_profils()

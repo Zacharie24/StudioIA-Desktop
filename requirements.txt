@@ -1,0 +1,22 @@
+# -*- coding: utf-8 -*-
+# Dépendances du RUNTIME de base StudioIA (dashboard FastAPI + modules).
+# Versions épinglées (build reproductible) — testées sur Python 3.11.9.
+# torch / whisper / coqui-TTS = pack XTTS optionnel (pas dans le runtime de base).
+# language_tool_python télécharge LanguageTool (Java ~200 Mo) au 1er usage (grammar_check).
+
+fastapi==0.141.1
+uvicorn==0.52.0
+jinja2==3.1.6
+python-multipart==0.0.32
+requests==2.34.2
+psutil==7.2.2
+pillow==12.3.0
+pydub==0.25.1
+numpy==2.4.6
+scipy==1.17.1
+GPUtil==1.4.0
+google-api-python-client==2.198.0
+google-auth-oauthlib==1.4.0
+google-auth-httplib2==0.4.0
+edge-tts==7.2.8
+language-tool-python==3.4.0

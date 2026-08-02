@@ -22,6 +22,7 @@ from datetime import datetime
 # Ajouter la racine au path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from core import paths
 from fastapi import FastAPI, Request, UploadFile, File, Form
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -50,7 +51,7 @@ async def dashboard(request: Request):
         diagnostic = None
 
     # Stats rapides
-    projects_path = Path(__file__).parent.parent / "projects"
+    projects_path = paths.PROJECTS_DIR
     projets = []
     if projects_path.exists():
         for p in projects_path.iterdir():
@@ -398,7 +399,7 @@ async def api_latest_diagnostic():
 @app.get("/api/projets")
 async def api_projets():
     """API: liste des projets"""
-    projects_path = Path(__file__).parent.parent / "projects"
+    projects_path = paths.PROJECTS_DIR
     projets = []
     if projects_path.exists():
         for p in sorted(projects_path.iterdir(), reverse=True)[:20]:
@@ -547,7 +548,7 @@ async def api_automation_progress():
 
 def _chemin_projet(projet: str):
     """Resout un nom de projet vers son dossier, securise sous projects/."""
-    projects_root = (Path(__file__).parent.parent / "projects").resolve()
+    projects_root = paths.PROJECTS_DIR.resolve()
     projet_dir = (projects_root / projet).resolve()
     if not str(projet_dir).startswith(str(projects_root)):
         return None

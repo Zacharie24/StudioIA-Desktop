@@ -29,11 +29,15 @@ from pathlib import Path
 RACINE_APP = Path(__file__).resolve().parent.parent
 
 # --- Données utilisateur ------------------------------------------------------
+# Mode installé : STUDIOIA_DATA_DIR est défini par le shell Tauri / l'installateur
+# → les données utilisateur vivent hors du dossier d'app (%USERPROFILE%\StudioIA).
+# Mode source (développement) : aucune variable → tout reste dans RACINE_APP,
+# exactement comme avant (aucun changement de comportement).
 _env_data = os.environ.get("STUDIOIA_DATA_DIR", "").strip()
 if _env_data:
     DATA_DIR = Path(_env_data)
 else:
-    DATA_DIR = Path(os.environ.get("USERPROFILE", r"C:\Users\Public")) / "StudioIA"
+    DATA_DIR = RACINE_APP
 
 
 # --- Helpers de base -----------------------------------------------------------
@@ -130,6 +134,44 @@ def ajouter_modules_au_path():
     if m not in sys.path:
         sys.path.insert(0, m)
     return m
+
+
+# --- Runtime Python embarqué ---------------------------------------------------------
+def python_exe():
+    """Chemin de l'interpréteur Python à utiliser pour les sous-processus.
+
+    Retourne le Python embarqué (runtime/python.exe) s'il existe, sinon
+    l'interpréteur courant (sys.executable). L'appelant décide de lancer ou
+    d'accepter un interpréteur système (GUI legacy, outils de dev).
+    """
+    rt = RACINE_APP / "runtime" / "python" / "python.exe"
+    return str(rt) if rt.exists() else sys.executable
+
+
+def pythonw_exe():
+    """Version sans console (pythonw.exe) du runtime, pour processus en fond."""
+    rt = RACINE_APP / "runtime" / "python" / "pythonw.exe"
+    return str(rt) if rt.exists() else sys.executable
+
+
+def lancer_script(script: str, args=None, cwd=None):
+    """Commande subprocess pour lancer un script Python avec le runtime.
+
+    Retourne la liste à passer à subprocess.run/Popen :
+        subprocess.Popen(paths.lancer_script("modules/x.py", ["a"]))
+    Preferer sys.executable pour les tâches internes (même interpréteur) ;
+    utiliser celui-ci pour forcer explicitement le runtime.
+    """
+    cmd = [python_exe(), script_path(script)]
+    if args:
+        cmd.extend(args)
+    return cmd
+
+
+def script_path(script):
+    """Résout un chemin de script relatif à la racine de l'application."""
+    p = Path(script)
+    return str(p if p.is_absolute() else RACINE_APP / p)
 
 
 def _import_depuis_racine():
