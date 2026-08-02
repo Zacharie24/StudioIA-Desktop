@@ -39,6 +39,13 @@ static_dir = Path(__file__).parent / "static"
 static_dir.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
+# Assistant de premier lancement (routes séparées, aucune route existante touchée)
+try:
+    from web.setup_routes import setup_router
+    app.include_router(setup_router)
+except Exception as _e_setup:
+    print(f"[web.main] Assistant /setup non monté : {_e_setup}")
+
 
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):

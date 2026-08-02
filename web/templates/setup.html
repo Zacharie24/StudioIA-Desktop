@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudioIA — Configuration initiale</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; }
+        .navbar { background: #1e293b; padding: 1rem 2rem; display: flex; align-items: center; gap: 2rem; border-bottom: 1px solid #334155; }
+        .navbar h1 { color: #3b82f6; font-size: 1.3rem; }
+        .navbar a { color: #94a3b8; text-decoration: none; font-size: 0.9rem; padding: 0.3rem 0.8rem; border-radius: 4px; }
+        .navbar a:hover { color: #fff; background: #334155; }
+
+        .container { max-width: 820px; margin: 0 auto; padding: 2rem; }
+        h2 { margin-bottom: 0.4rem; }
+        .lead { color: #64748b; font-size: 0.95rem; margin-bottom: 1.8rem; }
+
+        .card { background: #1e293b; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid #334155; }
+        .card h3 { color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid #334155; }
+
+        .field { margin-bottom: 1.2rem; }
+        .field label { display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.3rem; }
+        .field input, .field select { width: 100%; padding: 0.6rem; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #fff; font-size: 0.9rem; }
+        .field input:focus, .field select:focus { outline: none; border-color: #3b82f6; }
+        .field .hint { font-size: 0.75rem; color: #64748b; margin-top: 0.25rem; }
+
+        .btn { padding: 0.6rem 1.4rem; background: #3b82f6; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+        .btn:hover { background: #2563eb; }
+        .btn-success { background: #059669; }
+        .btn-success:hover { background: #047857; }
+        .btn-ghost { background: #334155; }
+        .btn-ghost:hover { background: #475569; }
+
+        .flex-row { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+
+        /* Répertoire de préparation */
+        #checklist { list-style: none; }
+        #checklist li { display: flex; align-items: center; gap: 0.6rem; padding: 0.45rem 0; font-size: 0.9rem; border-bottom: 1px solid #1e293b; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .dot.ok { background: #34d399; }
+        .dot.no { background: #f87171; }
+        .dot.wip { background: #fbbf24; animation: pulse 1s infinite; }
+        @keyframes pulse { 50% { opacity: 0.3; } }
+        .chk-label { flex: 1; }
+        .chk-detail { color: #94a3b8; font-size: 0.8rem; }
+
+        #scoreBox { text-align: center; padding: 1rem; margin-bottom: 1.5rem; border-radius: 8px; border: 1px solid #334155; background: #1e293b; }
+        #scoreVal { font-size: 2.2rem; font-weight: 700; color: #3b82f6; }
+        #scorePct { font-size: 0.9rem; color: #94a3b8; }
+
+        #msg { opacity: 0; transition: opacity 0.3s; font-size: 0.9rem; }
+        #msg.show { opacity: 1; }
+        .msg-ok { color: #34d399; }
+        .msg-err { color: #f87171; }
+
+        .footer { text-align: center; padding: 2rem; color: #475569; font-size: 0.8rem; }
+        a.link { color: #3b82f6; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>StudioIA</h1>
+        <a href="/">Dashboard</a>
+        <a href="/setup" class="active">Assistant</a>
+    </nav>
+
+    <div class="container">
+        <h2>Configuration initiale</h2>
+        <p class="lead">Vérifie que tout est prêt, puis enregistre tes clés API. L'assistant ne touche à rien d'autre.</p>
+
+        <div id="scoreBox">
+            <div id="scoreVal">…</div>
+            <div id="scorePct">calcul du niveau de préparation</div>
+        </div>
+
+        <div class="card">
+            <h3>Préparation du système</h3>
+            <ul id="checklist"></ul>
+            <div class="flex-row" style="margin-top:1rem;">
+                <button class="btn-ghost btn" onclick="refreshEtat()">Re-vérifier</button>
+                <button class="btn btn-success" onclick="demarrerOllama()" id="btnOllama">Démarrer / vérifier Ollama</button>
+            </div>
+            <div id="msg"></div>
+        </div>
+
+        <div class="card">
+            <h3>Clés API</h3>
+            <div class="field">
+                <label>Clé API Pexels</label>
+                <input type="text" id="pexels_api_key" placeholder="Clé Pexels (images / vidéos)" value="{{ config.pexels_api_key or '' }}">
+                <div class="hint">Obtiens-la sur <a class="link" href="https://www.pexels.com/api/" target="_blank">pexels.com/api</a></div>
+            </div>
+            <div class="field">
+                <label>Clé API YouTube</label>
+                <input type="text" id="youtube_api_key" placeholder="AIzaSy..." value="{{ config.youtube_api_key or '' }}">
+                <div class="hint">Google Cloud Console → API YouTube Data v3 (quota gratuit 10k/jour)</div>
+            </div>
+            <div class="field">
+                <label>Profil actif</label>
+                <select id="profil_actif">
+                    <option value="prayer" {% if config.profil_actif == 'prayer' %}selected{% endif %}>Prière / méditation</option>
+                    <option value="worship" {% if config.profil_actif == 'worship' %}selected{% endif %}>Adoration</option>
+                    <option value="temoignage" {% if config.profil_actif == 'temoignage' %}selected{% endif %}>Témoignage</option>
+                </select>
+                <div class="hint">Définit le style de génération par défaut.</div>
+            </div>
+            <button class="btn btn-success" onclick="saveConfig()">Enregistrer</button>
+        </div>
+    </div>
+
+    <div class="footer">StudioIA — assistant de premier lancement</div>
+
+    <script>
+        const ETAT_LABELS = {
+            ollama: "Ollama",
+            modeles: "Modèles IA",
+            ffmpeg: "FFmpeg",
+            pexels: "Clé API Pexels",
+            youtube: "Clé API YouTube",
+            profil: "Profil utilisateur",
+            donnees: "Données utilisateur"
+        };
+
+        let checkInterval = null;
+
+        function setMsg(html, ok) {
+            const m = document.getElementById('msg');
+            m.innerHTML = html;
+            m.className = ok ? 'msg-ok show' : 'msg-err show';
+            if (checkInterval) setTimeout(() => { m.className = ''; }, 3500);
+        }
+
+        function renderEtat(data) {
+            const ul = document.getElementById('checklist');
+            ul.innerHTML = '';
+            (data.items || []).forEach(it => {
+                const li = document.createElement('li');
+                const cls = it.ok ? 'ok' : 'no';
+                li.innerHTML = '<span class="dot ' + cls + '"></span>' +
+                    '<span class="chk-label">' + (ETAT_LABELS[it.cle] || it.label) + '</span>' +
+                    '<span class="chk-detail">' + (it.detail || '') + '</span>';
+                ul.appendChild(li);
+            });
+            document.getElementById('scoreVal').textContent = data.score + '%';
+            document.getElementById('scorePct').textContent =
+                data.score >= 100 ? 'Tout est prêt !' : 'Éléments restants : ' + (7 - data.score / 14);
+        }
+
+        async function refreshEtat() {
+            try {
+                const r = await fetch('/api/setup/etat');
+                const d = await r.json();
+                renderEtat(d);
+            } catch (e) {
+                setMsg('Impossible de contacter l\'assistant.', false);
+            }
+        }
+
+        async function demarrerOllama() {
+            setMsg('Démarrage du serveur Ollama (en arrière-plan)…', true);
+            document.getElementById('btnOllama').disabled = true;
+            try {
+                const r = await fetch('/api/setup/demarrer-ollama', { method: 'POST' });
+                const d = await r.json();
+                setMsg((d.ok ? '✓ ' : '✗ ') + (d.message || 'en cours'), d.ok);
+            } catch (e) {
+                setMsg('Requête impossible.', false);
+            }
+            document.getElementById('btnOllama').disabled = false;
+            setTimeout(refreshEtat, 1500);
+        }
+
+        async function saveConfig() {
+            const data = {
+                pexels_api_key: document.getElementById('pexels_api_key').value.trim(),
+                youtube_api_key: document.getElementById('youtube_api_key').value.trim(),
+                profil_actif: document.getElementById('profil_actif').value
+            };
+            try {
+                const r = await fetch('/api/setup/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const d = await r.json();
+                setMsg((d.ok ? '✓ ' : '✗ ') + (d.message || d.erreur || ''), d.ok);
+                if (d.ok) setTimeout(refreshEtat, 800);
+            } catch (e) {
+                setMsg('Enregistrement impossible.', false);
+            }
+        }
+
+        // Initialisation
+        refreshEtat();
+    </script>
+</body>
+</html>
