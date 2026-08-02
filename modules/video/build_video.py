@@ -728,7 +728,7 @@ def main():
     video_finale = os.path.join(export_dir, f"{nom_lisible}_final.mp4")
     fusionner_videos(segments_ok, video_brute, temp_dir)
 
-    music_file = choisir_musique(config.get("music_path", ""), project_path)
+    music_file = choisir_musique(str(paths.MUSIC_DIR), project_path)
     if music_file:
         log(f"Musique : {os.path.basename(music_file)}")
         # Récupérer les paramètres audio depuis config

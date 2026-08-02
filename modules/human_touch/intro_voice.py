@@ -389,10 +389,8 @@ def _duree_audio(ffmpeg, chemin):
 
 
 def _choisir_musique_fond():
-    """Premier mp3/wav de la bibliotheque musique de config (meme que le reste de la video)."""
-    config = _lire_config()
-    music_path = config.get("music_path", str(Path(__file__).parent.parent.parent / "assets" / "music"))
-    mp = Path(music_path)
+    """Premier mp3/wav de la bibliotheque musique (resolue par paths.py)."""
+    mp = paths.MUSIC_DIR
     if mp.exists():
         fichiers = sorted(list(mp.glob("*.mp3")) + list(mp.glob("*.wav")))
         if fichiers:

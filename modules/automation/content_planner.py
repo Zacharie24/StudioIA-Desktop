@@ -13,6 +13,12 @@ from datetime import datetime, timedelta
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from core.profiles.profile_manager import get_manager as get_profile_manager
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent.parent.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
 
 
 def _lire_config():
@@ -95,7 +101,7 @@ def suggerer_contenu(profil_id="prayer", tendances=None):
     langue = manifest.get("langue", "fr")
 
     # Charger les projets existants
-    projects_path = Path(__file__).parent.parent.parent / "projects"
+    projects_path = paths.PROJECTS_DIR
     sujets_existants = []
     if projects_path.exists():
         for p in sorted(projects_path.iterdir(), reverse=True)[:20]:
@@ -293,7 +299,7 @@ def analyser_performances_profil(profil_id="prayer"):
     }
 
     # Stats des projets
-    projects_path = Path(__file__).parent.parent.parent / "projects"
+    projects_path = paths.PROJECTS_DIR
     durees = []
     if projects_path.exists():
         for p in projects_path.iterdir():

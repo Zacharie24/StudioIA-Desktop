@@ -368,7 +368,7 @@ def generer_mlt_for_short(project_path, short_idx, titre, audio_path, image_path
     Genere un projet Shotcut pour un Short specifique.
     """
     music_path = None
-    musique_dir = Path(config.get("music_path", MUSIC_DIR))
+    musique_dir = paths.MUSIC_DIR
     if musique_dir.exists():
         fichiers = list(musique_dir.glob("*.mp3")) + list(musique_dir.glob("*.wav"))
         if fichiers:

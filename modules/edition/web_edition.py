@@ -21,15 +21,19 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-CONFIG_PATH = Path(__file__).parent.parent.parent / "config.json"
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent.parent.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
 
 
 def _lire_config():
-    try:
-        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
+    # Config EFFECTIVE (utilisateur en installé, embarquée + locale en source) :
+    # les chemins projets/musique/assets sont résolus par paths.py, plus jamais
+    # depuis des chemins absolus stockés dans la config.
+    return paths.lire_config()
 
 
 def log(msg):
@@ -75,7 +79,7 @@ def generer_shorts_via_web(sujet, type_contenu="priere", langue="fr",
 
     try:
         # Dossier projet Shorts (résolu via core/paths)
-        projects_path = Path(config.get("projects_path", str(Path(__file__).parent.parent.parent / "projects")))
+        projects_path = paths.PROJECTS_DIR
         projects_path.mkdir(parents=True, exist_ok=True)
         shorts_id = f"shorts_{_slug(sujet)}_{int(time.time())}"
         shorts_path = projects_path / shorts_id
@@ -142,7 +146,7 @@ def generer_shorts_via_web(sujet, type_contenu="priere", langue="fr",
                 log(f"  Short {i}: srt ignore: {e}")
 
             # Image de fond
-            image = choisir_image(config.get("assets_path", ""), sujet, langue)
+            image = choisir_image(str(paths.ASSETS_DIR), sujet, langue)
             if not image:
                 log(f"  Short {i}: aucune image disponible — on saute")
                 continue
@@ -217,7 +221,7 @@ def generer_video_longue_via_web(sujet, type_contenu="priere", langue="fr",
     try:
         duree = max(1, int(duree_minutes or 30))
         # Dossier projet
-        projects_path = Path(config.get("projects_path", str(Path(__file__).parent.parent.parent / "projects")))
+        projects_path = paths.PROJECTS_DIR
         projects_path.mkdir(parents=True, exist_ok=True)
         prefix = titre or sujet
         projet_id = f"long_{_slug(prefix, 40)}_{int(time.time())}"
@@ -309,7 +313,7 @@ def generer_video_longue_via_web(sujet, type_contenu="priere", langue="fr",
 def lister_projets_longues():
     """Liste les projets de videos longues generes depuis /edition."""
     config = _lire_config()
-    projects_path = Path(config.get("projects_path", str(Path(__file__).parent.parent.parent / "projects")))
+    projects_path = paths.PROJECTS_DIR
     if not projects_path.exists():
         return []
 
@@ -343,7 +347,7 @@ def lister_projets_longues():
 def lister_projets_shorts():
     """Liste les projets shorts existants + videos generees."""
     config = _lire_config()
-    projects_path = Path(config.get("projects_path", str(Path(__file__).parent.parent.parent / "projects")))
+    projects_path = paths.PROJECTS_DIR
     if not projects_path.exists():
         return []
 
@@ -387,7 +391,7 @@ def generer_thumbnail_via_web(titre, output_path=None, projet_nom=""):
         from modules.shorts.generate_shorts import generer_thumbnail_short
         if not output_path:
             config = _lire_config()
-            projects_path = Path(config.get("projects_path", str(Path(__file__).parent.parent.parent / "projects")))
+            projects_path = paths.PROJECTS_DIR
             d = projects_path / "thumbnails_web"
             d.mkdir(parents=True, exist_ok=True)
             output_path = str(d / f"thumb_{_slug(titre, 30)}.png")

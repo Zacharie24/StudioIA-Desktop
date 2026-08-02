@@ -14,6 +14,13 @@ from datetime import datetime
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent.parent.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
+
 from modules.automation.content_planner import (
     suggerer_contenu,
     analyser_tendances_youtube,
@@ -235,7 +242,7 @@ class PipelineAutomation:
                         texte = intro.get("texte", "")
                         # Copie dans le projet (reference) + pour l'UI (pre-remplissage)
                         try:
-                            projet_dir = Path(__file__).parent.parent.parent / "projects" / projet_nom
+                            projet_dir = paths.PROJECTS_DIR / projet_nom
                             (projet_dir / "intro_texte.txt").write_text(texte, encoding="utf-8")
                         except Exception as e:
                             log(f"  Intro: ecriture texte projet impossible: {e}")
@@ -274,7 +281,7 @@ class PipelineAutomation:
             progress_etape("script", "Generation du script (plan + chapitres)...", 30)
 
             # Utiliser generate_script.main() qui lit le project.json
-            projet_path = str(Path(__file__).parent.parent.parent / "projects" / projet_nom)
+            projet_path = str(paths.PROJECTS_DIR / projet_nom)
 
             from modules.brain.generate_script import main as generate_main
             # Sauvegarder et restaurer sys.argv
@@ -322,7 +329,7 @@ class PipelineAutomation:
         import sys as _sys
 
         log(f"Phase Video: {projet_nom}")
-        projet_path = Path(__file__).parent.parent.parent / "projects" / projet_nom
+        projet_path = paths.PROJECTS_DIR / projet_nom
         pjson = projet_path / "project.json"
 
         try:
@@ -362,7 +369,7 @@ class PipelineAutomation:
         progress_etape("musique_fond", "Musique de fond...", 55)
         musique_copier = None
         try:
-            music_dir = Path(self.config.get("music_path", ""))
+            music_dir = paths.MUSIC_DIR
             if music_dir.exists():
                 candidats = sorted(list(music_dir.glob("*.mp3")) + list(music_dir.glob("*.wav")))
                 if candidats:
@@ -534,7 +541,7 @@ class PipelineAutomation:
         """
         if not projet_nom:
             return {"ok": False, "audio": ""}
-        projet_path = Path(__file__).parent.parent.parent / "projects" / projet_nom
+        projet_path = paths.PROJECTS_DIR / projet_nom
         pjson = projet_path / "project.json"
         try:
             from modules.human_touch.intro_voice import get_intro_projet
@@ -589,7 +596,7 @@ class PipelineAutomation:
         projet_nom = self.resultat.get("projet_creer")
         chemin_video = None
         if projet_nom:
-            projet_path = Path(__file__).parent.parent.parent / "projects" / projet_nom
+            projet_path = paths.PROJECTS_DIR / projet_nom
             try:
                 data = json.loads((projet_path / "project.json").read_text(encoding="utf-8"))
             except Exception:
@@ -653,7 +660,7 @@ class PipelineAutomation:
         """Cree un projet dans projects/ a partir d'une suggestion"""
         import re
 
-        projects_path = Path(__file__).parent.parent.parent / "projects"
+        projects_path = paths.PROJECTS_DIR
 
         # Generer un nom de dossier
         titre = suggestion.get("titre", "contenu_automatique")

@@ -171,6 +171,45 @@ async def api_setup_import_modeles():
     return {"ok": len(errors) == 0, "importe": importe, "erreurs": errors}
 
 
+def _source_importer_def():
+    """Source par défaut : l'ancienne install la plus récente, si présente."""
+    from core import paths
+    for cand in (r"C:\StudioIA-Next", r"C:\StudioIA"):
+        if Path(cand).exists():
+            return cand
+    return ""
+
+
+@setup_router.get("/api/setup/importer/etat")
+async def api_setup_importer_etat():
+    """État de la migration : analyse de la source + progression de l'import."""
+    from core import importer
+    src = _source_importer_def()
+    analyse = importer.analyser(src) if src else {"source": "", "existe": False}
+    return {"analyse": analyse, "etat": dict(importer.ETAT)}
+
+
+@setup_router.post("/api/setup/importer")
+async def api_setup_importer(request: Request):
+    """Lance la migration des données réelles (en arrière-plan)."""
+    from core import importer, paths
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+    source = (data.get("source") or "").strip() or _source_importer_def()
+    if not source or not Path(source).exists():
+        return {"ok": False, "erreur": f"Source introuvable : {source}"}
+    sections_in = data.get("sections") or ["config", "api_keys", "data", "logs"]
+    sections = tuple(s for s in sections_in if s in importer.SECTIONS)
+    if not sections:
+        return {"ok": False, "erreur": "Aucune section à importer sélectionnée"}
+    if importer.ETAT["actif"]:
+        return {"ok": False, "erreur": "Un import est déjà en cours."}
+    importer.importer(source, cible=str(paths.DATA_DIR), sections=sections, en_fond=True)
+    return {"ok": True, "message": f"Import lancé depuis {source} (cible {paths.DATA_DIR})"}
+
+
 @setup_router.post("/api/setup/capacites")
 async def api_setup_capacites(body: dict | None = None):
     """Applique les réglages recommandés d'après le matériel détecté.

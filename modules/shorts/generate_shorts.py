@@ -399,7 +399,7 @@ def generer_musique_fond_projet(shorts_path, sujet, type_contenu, config):
 
     # Étape 2: Fallback vers musique existante
     log("  Fallback vers musique existante...")
-    music_file = choisir_musique(config.get("music_path", ""))
+    music_file = choisir_musique(str(paths.MUSIC_DIR))
     if music_file:
         # Copier la musique dans le dossier audio du projet
         import shutil
@@ -531,7 +531,7 @@ def creer_video_short(audio_path, image_path, output_path, titre, config, shorts
             log(f"  Musique de fond: {musique_composia.name}")
         else:
             # Fallback vers musique_path dans config
-            music_file = choisir_musique(config.get("music_path", ""))
+            music_file = choisir_musique(str(paths.MUSIC_DIR))
 
     # Constructeur de commande FFmpeg
     cmd = [

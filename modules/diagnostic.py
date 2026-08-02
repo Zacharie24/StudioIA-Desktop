@@ -20,8 +20,16 @@ from datetime import datetime, timedelta
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from core.profiles.profile_manager import get_manager as get_profile_manager
 
-CONFIG_PATH = Path(__file__).parent.parent / "config.json"
-DATA_DIR = Path(__file__).parent.parent / "data" / "diagnostics"
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
+
+# Diagnostics utilisateur : %USERPROFILE%\StudioIA\data\diagnostics (isolé du
+# dossier d'app, préservé pendant les MAJ). Résolu par paths.py.
+DATA_DIR = paths.chemin_data("data", "diagnostics")
 
 
 def log(msg):
@@ -29,11 +37,8 @@ def log(msg):
 
 
 def _lire_config():
-    try:
-        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except:
-        return {}
+    # Config EFFECTIVE (utilisateur en installé, embarquée + locale en source).
+    return paths.lire_config()
 
 
 def _sauvegarder_diagnostic(resultat):
@@ -92,7 +97,7 @@ def _tester_youtube():
 
 def _analyser_projets_recents(jours=7):
     """Analyse les projets créés récemment"""
-    projects_path = Path(__file__).parent.parent / "projects"
+    projects_path = paths.PROJECTS_DIR
     if not projects_path.exists():
         return {"total": 0, "termines": 0}
 
