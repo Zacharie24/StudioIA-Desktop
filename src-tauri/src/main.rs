@@ -37,6 +37,9 @@ const HEALTH_PATH: &str = "/api/system/stats";
 // CREATE_NO_WINDOW = 0x08000000 : pas de console pour le backend.
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(120);
+// Dossier des données utilisateur par défaut (isolé du dossier d'app) :
+// %USERPROFILE%\StudioIA. Surchargé par la variable STUDIOIA_DATA_DIR.
+const DEFAULT_DATA_DIR_NAME: &str = "StudioIA";
 
 // ---------------------------------------------------------------------------
 // Résolution de la racine de l'application
@@ -72,7 +75,19 @@ fn spawn_backend(root: &PathBuf) -> Option<Child> {
         eprintln!("[shell] python runtime introuvable : {}", python.display());
         return None;
     }
-    Command::new(python)
+    // Définir STUDIOIA_DATA_DIR pour isoler les données utilisateur hors du
+    // dossier d'app (sauf si déjà défini par l'installateur ou l'utilisateur).
+    // Le backend (child) hérite de l'environnement : core/paths.py le lira.
+    let mut cmd = Command::new(python);
+    if std::env::var_os("STUDIOIA_DATA_DIR").is_none() {
+        if let Ok(profile) = std::env::var("USERPROFILE") {
+            cmd.env(
+                "STUDIOIA_DATA_DIR",
+                PathBuf::from(profile).join(DEFAULT_DATA_DIR_NAME),
+            );
+        }
+    }
+    cmd
         .args([
             "-m",
             "uvicorn",
