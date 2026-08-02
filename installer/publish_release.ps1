@@ -73,7 +73,7 @@ if (-not (Test-Path $keyPath)) { throw "Clé privée updater introuvable : $keyP
 
 Write-Host "`n--- Signature du Setup.exe (tauri signer) ---"
 Push-Location "$root\src-tauri"
-npx tauri signer sign "$setup" -k $keyPath -p $pass
+npx tauri signer sign "$setup" -f $keyPath -p $pass
 if ($LASTEXITCODE -ne 0) { throw "Échec tauri signer sign" }
 Pop-Location
 
