@@ -13,6 +13,7 @@ projects/
 data/
 logs/
 temp/
+.ollama/
 *.zip
 
 # ===== Binaires / outils (assembles par scripts/build.ps1) =====
