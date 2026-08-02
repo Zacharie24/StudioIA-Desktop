@@ -35,12 +35,18 @@ def log(msg):
 
 
 def _lire_config():
-    config_path = Path(__file__).parent.parent.parent / "config.json"
+    # Resolution via core/paths : en mode installe, la config UTILISATEUR
+    # (%USERPROFILE%\StudioIA\config.json) prime sur la config embarque.
     try:
-        with open(config_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except:
-        return {}
+        from core import paths
+        return paths.lire_config()
+    except Exception:
+        try:
+            config_path = Path(__file__).parent.parent.parent / "config.json"
+            with open(config_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
 
 
 class PipelineAutomation:

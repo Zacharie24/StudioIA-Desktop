@@ -85,6 +85,17 @@
         </div>
 
         <div class="card">
+            <h3>Capacités de la machine (profil auto)</h3>
+            <div id="capsBox">
+                <span class="chk-detail">détection en cours…</span>
+            </div>
+            <div class="flex-row" style="margin-top: 0.8rem;">
+                <button class="btn btn-ghost" onclick="appliquerCapacites()">Appliquer les réglages recommandés</button>
+            </div>
+            <div id="capsMsg"></div>
+        </div>
+
+        <div class="card">
             <h3>Clés API</h3>
             <div class="field">
                 <label>Clé API Pexels</label>
@@ -145,6 +156,37 @@
             document.getElementById('scoreVal').textContent = data.score + '%';
             document.getElementById('scorePct').textContent =
                 data.score >= 100 ? 'Tout est prêt !' : 'Éléments restants : ' + (7 - data.score / 14);
+
+            renderCapacites(data.capacites);
+        }
+
+        function renderCapacites(caps) {
+            const box = document.getElementById('capsBox');
+            if (!caps) {
+                box.innerHTML = '<span class="chk-detail">profil non détecté</span>';
+                return;
+            }
+            box.innerHTML =
+                '<div class="chk-label"><strong>Profil : ' + caps.profil + '</strong></div>' +
+                '<div class="chk-detail">' + (caps.contexte || '') + '</div>' +
+                '<div class="chk-detail">RAM ' + (caps.ram_go ?? '—') + ' Go · ' +
+                    (caps.coeurs ?? '—') + ' cœurs' +
+                    (caps.gpu ? ' · GPU ' + caps.gpu : ' · sans GPU dédié') + '</div>' +
+                '<div class="chk-detail">Vidéo : ' + caps.video_resolution +
+                    ' · Voix : ' + caps.tts_voix +
+                    ' · low_resource : ' + (caps.low_resource ? 'oui' : 'non') + '</div>';
+        }
+
+        async function appliquerCapacites() {
+            setMsg('Application des réglages recommandés…', true);
+            try {
+                const r = await fetch('/api/setup/capacites', { method: 'POST' });
+                const d = await r.json();
+                setMsg((d.ok ? '✓ ' : '✗ ') + (d.message || d.erreur || ''), d.ok);
+                if (d.ok) { setTimeout(refreshEtat, 800); }
+            } catch (e) {
+                setMsg('Requête impossible.', false);
+            }
         }
 
         async function refreshEtat() {

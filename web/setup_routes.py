@@ -43,12 +43,15 @@ def _lire_config():
 
 
 def _sauver_config(donnees):
+    """Sauvegarde dans la config UTILISATEUR (DATA_DIR), jamais dans la config
+    embarquée. La config embarquée ne sert que de base (défauts) en lecture :
+    écrire dedans casserait l'isolation (fichier effacé à la MAJ, et/ou
+    config de dev polluée). Crée le config.json utilisateur si absent."""
     from core import paths
     try:
-        existing = _lire_config()
+        existing = paths.lire_config()  # effective : utilisateur si présente, sinon embarquée
         existing.update(donnees)
-        with open(paths.config_path(), "w", encoding="utf-8") as f:
-            json.dump(existing, f, ensure_ascii=False, indent=2)
+        paths.ecrire_config(existing)   # écrit TOUJOURS dans DATA_DIR/config.json
         return True
     except Exception:
         return False
@@ -106,11 +109,20 @@ async def api_setup_etat():
     ok = sum(1 for it in items if it["ok"])
     score = round(ok / len(items) * 100) if items else 0
 
+    # Capacités matérielles (profil auto petit/moyen/puissant) — lecture seule.
+    capabilities_etat = None
+    try:
+        from core import capabilities
+        capabilities_etat = capabilities.etat()
+    except Exception:
+        capabilities_etat = None
+
     return {
         "score": score,
         "items": items,
         "ollama_models_dir": str(services.ollama_models_dir()),
         "services": services.etat_services(),
+        "capacites": capabilities_etat,
     }
 
 
@@ -157,6 +169,29 @@ async def api_setup_import_modeles():
         except Exception as e:
             errors.append(f"{nom}: {e}")
     return {"ok": len(errors) == 0, "importe": importe, "erreurs": errors}
+
+
+@setup_router.post("/api/setup/capacites")
+async def api_setup_capacites(body: dict | None = None):
+    """Applique les réglages recommandés d'après le matériel détecté.
+
+    Non-destructif : ne surcharge QUE video_resolution, tts_voix,
+    low_resource, mode_visuel. Laisse tout le reste (clés API, profil,
+    réglages audio…) intact pour ne rien casser.
+    """
+    from core import capabilities
+    profil = (body or {}).get("profil")  # None = autodétection
+    rec = capabilities.recommandations(profil)
+    appliques = {
+        "video_resolution": rec["video_resolution"],
+        "tts_voix": rec["tts_voix"],
+        "low_resource": rec["low_resource"],
+        "mode_visuel": rec["mode_visuel"],
+    }
+    if _sauver_config(appliques):
+        return {"ok": True, "profil": rec["profil"], "appliques": appliques,
+                "message": f"Réglages {rec['profil']} appliqués"}
+    return {"ok": False, "erreur": "Échec de l'enregistrement de la config"}
 
 
 @setup_router.post("/api/setup/config")
