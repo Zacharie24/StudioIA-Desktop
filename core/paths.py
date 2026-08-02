@@ -1,0 +1,189 @@
+# -*- coding: utf-8 -*-
+"""
+core/paths.py — Résolution centrale des chemins de StudioIA Desktop.
+
+Toutes les constantes absolues de l'ancienne version
+(C:\\StudioIA\\..., C:\\StudioIA-Next\\..., C:\\tts-pentest) sont remplacées
+par des chemins résolus ici. Aucun module ne doit contenir de chemin absolu.
+
+Deux racines :
+  RACINE_APP  — dossier de l'application (modules/, web/, assets/, tools/...).
+                C'est le parent de core/, donc fonctionne en mode source
+                comme en mode installé (%LOCALAPPDATA%\\Programs\\StudioIA).
+  DATA_DIR    — données utilisateur (%USERPROFILE%\\StudioIA) : projets,
+                config utilisateur, logs, modèles Ollama, pack XTTS.
+                Surchargé par la variable d'environnement STUDIOIA_DATA_DIR
+                (l'installateur / le shell Tauri la définissent).
+
+En mode source (développement), DATA_DIR n'existe pas encore : la config et
+les projets restent dans RACINE_APP, exactement comme avant — aucun
+changement de comportement.
+"""
+
+import os
+import sys
+from pathlib import Path
+
+# --- Racine de l'application -------------------------------------------------
+# core/paths.py  ->  RACINE_APP = C:\StudioIA-Desktop (ou dossier installé)
+RACINE_APP = Path(__file__).resolve().parent.parent
+
+# --- Données utilisateur ------------------------------------------------------
+_env_data = os.environ.get("STUDIOIA_DATA_DIR", "").strip()
+if _env_data:
+    DATA_DIR = Path(_env_data)
+else:
+    DATA_DIR = Path(os.environ.get("USERPROFILE", r"C:\Users\Public")) / "StudioIA"
+
+
+# --- Helpers de base -----------------------------------------------------------
+def chemin_app(*parts):
+    """Chemin sous la racine de l'application (modules, web, assets...)."""
+    return RACINE_APP.joinpath(*parts)
+
+
+def chemin_data(*parts):
+    """Chemin sous les données utilisateur (projets, config, logs...)."""
+    return DATA_DIR.joinpath(*parts)
+
+
+def str_chemin(p):
+    """Convertit un Path en chaîne Windows native (pratique pour subprocess)."""
+    return str(Path(p))
+
+
+# --- Chemins "app" fréquents ----------------------------------------------------
+MODULES_DIR      = chemin_app("modules")
+WEB_DIR          = chemin_app("web")
+ASSETS_DIR       = chemin_app("assets")
+MUSIC_DIR        = ASSETS_DIR / "music"
+BACKGROUNDS_DIR  = ASSETS_DIR / "backgrounds"
+FONTS_DIR        = ASSETS_DIR / "fonts"
+COMPOSIA_DIR     = chemin_app("ComposIA")
+SOUNDFONTS_DIR   = COMPOSIA_DIR / "soundfonts"
+COMPOSITIONS_DIR = COMPOSIA_DIR / "compositions"
+TOOLS_DIR        = chemin_app("tools")
+FFMPEG_DIR       = TOOLS_DIR / "ffmpeg"
+FFMPEG           = FFMPEG_DIR / "ffmpeg.exe"
+FFPROBE          = FFMPEG_DIR / "ffprobe.exe"
+FFPLAY           = FFMPEG_DIR / "ffplay.exe"
+TEMP_DIR         = chemin_app("temp")
+
+# --- Chemins "données utilisateur" ----------------------------------------------
+PROJECTS_DIR     = chemin_data("projects")
+LOGS_DIR         = chemin_data("logs")
+OLLAMA_DIR       = chemin_data(".ollama")
+XTTS_DIR         = chemin_data("xtts")
+
+
+# --- Configuration ----------------------------------------------------------------
+def config_path():
+    """Chemin du config.json effectif : utilisateur (DATA_DIR) si présent,
+    sinon config embarquée (RACINE_APP)."""
+    p = chemin_data("config.json")
+    return p if p.exists() else chemin_app("config.json")
+
+
+def lire_config():
+    """Lit la configuration effective (dict vide si introuvable/corrompue)."""
+    import json
+    path = config_path()
+    try:
+        with open(path, "r", encoding="utf-8-sig") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def ecrire_config(donnees):
+    """Sauvegarde la configuration utilisateur (DATA_DIR), hors mode source."""
+    import json
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    path = chemin_data("config.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(donnees, f, ensure_ascii=False, indent=2)
+    return str(path)
+
+
+def lire_json(path):
+    """Lecture JSON tolérante à la BOM. Retourne {} si échec."""
+    import json
+    try:
+        with open(path, "r", encoding="utf-8-sig") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def ecrire_json(path, data):
+    """Écriture JSON propre (UTF-8, indenté)."""
+    import json
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+# --- sys.path --------------------------------------------------------------------
+def ajouter_modules_au_path():
+    """Ajoute modules/ au sys.path (exécution directe des scripts).
+    Retourne le chemin inséré."""
+    m = str(MODULES_DIR)
+    if m not in sys.path:
+        sys.path.insert(0, m)
+    return m
+
+
+def _import_depuis_racine():
+    """Import robuste du module paths depuis un script exécuté en direct.
+
+    Parcourt les parents jusqu'à trouver le dossier contenant core/paths.py,
+    l'ajoute à sys.path puis importe. À utiliser ainsi :
+
+        try:
+            from core import paths
+        except ImportError:
+            paths = __import__("core.paths", fromlist=["paths"]).paths
+            # fallback manuel ci-dessous si besoin
+    """
+    rac = Path(__file__).resolve().parent
+    while not (rac / "core" / "paths.py").exists():
+        rac = rac.parent
+        if rac.parent == rac:
+            raise ImportError("core/paths.py introuvable")
+    if str(rac) not in sys.path:
+        sys.path.insert(0, str(rac))
+    return rac
+
+
+# --- TTS (XTTS optionnel / Edge par défaut) -----------------------------------------
+def tts_path():
+    """Chemin du moteur TTS externe (pack XTTS), ou None si absent.
+
+    Ordre de résolution :
+      1. config.json -> tts_external_path (clé historique)
+      2. DATA_DIR/xtts (pack installé par l'application)
+      3. ancien C:\\tts-pentest encore présent (compat développement)
+
+    Si None -> l'app utilise Edge par défaut (fallback déjà codé).
+    """
+    cfg = lire_config()
+    p = cfg.get("tts_external_path")
+    if p:
+        return str(p)
+
+    d = chemin_data("xtts")
+    if (d / "venv" / "Scripts" / "python.exe").exists():
+        return str(d)
+
+    legacy = Path(r"C:\tts-pentest")
+    if (legacy / "venv" / "Scripts" / "python.exe").exists():
+        return str(legacy)
+    return None
+
+
+def tts_venv_python():
+    """Interpréteur Python du venv TTS (pack XTTS) ou None."""
+    t = tts_path()
+    if not t:
+        return None
+    vp = Path(t) / "venv" / "Scripts" / "python.exe"
+    return str(vp) if vp.exists() else None

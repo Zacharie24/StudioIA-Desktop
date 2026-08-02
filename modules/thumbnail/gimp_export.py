@@ -2,6 +2,15 @@
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent
+    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
+        _rac = _rac.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
+
 GIMP_PATHS = [
     "C:\\Program Files\\GIMP 3\\bin\\gimp-3.exe",
     "C:\\Program Files\\GIMP 2\\bin\\gimp-2.10.exe",
@@ -106,7 +115,7 @@ def ouvrir_gimp_avec_calques(project_path, calques_dir):
     return True
 
 def main():
-    project_path = sys.argv[1] if len(sys.argv) > 1 else "C:\\StudioIA\\projects\\test_rapide"
+    project_path = sys.argv[1] if len(sys.argv) > 1 else str(paths.PROJECTS_DIR / "test_rapide")
 
     thumb_json = os.path.join(project_path, "thumbnail", "thumbnail.json")
     if not os.path.exists(thumb_json):

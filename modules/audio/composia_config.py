@@ -15,6 +15,15 @@ import shutil
 import subprocess
 from pathlib import Path
 
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent
+    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
+        _rac = _rac.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
+
 # ============================================================
 # Fichier de configuration par projet
 # ============================================================
@@ -175,7 +184,7 @@ def configurer_musique_interactive(project_path: str) -> dict:
     Retourne la configuration complète
     """
     import sys
-    sys.path.insert(0, r"C:\\StudioIA-Next\modules\utils")
+    sys.path.insert(0, str(paths.MODULES_DIR / "utils"))
     from timeout_input import choisir_avec_timeout
 
     print("\n" + "="*60)
@@ -323,7 +332,7 @@ def generer_musique_depuit_config(project_path: str, moteur: str = "fluidsynth")
         project_path: Chemin du projet
         moteur: "fluidsynth" (défaut) ou "windows" pour utiliser le moteur MIDI de Windows
     """
-    sys.path.insert(0, r"C:\\StudioIA-Next\modules\audio")
+    sys.path.insert(0, str(paths.MODULES_DIR / "audio"))
     from composia import generer_musique_fond, preparer_audio_pour_video
 
     config = charger_config(project_path)
@@ -363,7 +372,7 @@ def generer_multiple_musiques(project_path: str, nb_musiques: int = 10) -> dict:
     import random
     import math
 
-    sys.path.insert(0, r"C:\\StudioIA-Next\modules\audio")
+    sys.path.insert(0, str(paths.MODULES_DIR / "audio"))
     from composia import generer_musique_fond, preparer_audio_pour_video
 
     # Charger la config existante ou créer une par défaut
@@ -458,7 +467,7 @@ def generer_multiple_musiques(project_path: str, nb_musiques: int = 10) -> dict:
         volume_db = int(20 * math.log10(volume_per_music)) if volume_per_music > 0 else -100
 
         # Créer la commande FFmpeg
-        cmd = ["C:\\StudioIA\\tools\\ffmpeg\\ffmpeg.exe", "-y"]
+        cmd = [str(paths.FFMPEG), "-y"]
         for audio_path in all_audio_paths:
             cmd.extend(["-i", audio_path])
 
@@ -523,7 +532,7 @@ def copier_fichiers_composition(projet_path, musique_path):
     nom_composition = source_dir.name
 
     # Chercher le dossier de composition dans ComposIA/compositions/
-    composia_compositions = Path("C:/StudioIA/ComposIA/compositions")
+    composia_compositions = paths.COMPOSITIONS_DIR
     source_compo = composia_compositions / nom_composition
 
     if source_compo.exists():

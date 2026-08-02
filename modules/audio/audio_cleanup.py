@@ -17,7 +17,16 @@ import sys
 import tempfile
 from pathlib import Path
 
-FFMPEG = "C:\\StudioIA\\tools\\ffmpeg\\ffmpeg.exe"
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent
+    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
+        _rac = _rac.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
+
+FFMPEG = str(paths.FFMPEG)
 
 
 def log(msg):
@@ -26,7 +35,7 @@ def log(msg):
 
 def lire_config():
     """Lire la config globale"""
-    cfg_path = "C:\\StudioIA\\config.json"
+    cfg_path = paths.config_path()
     with open(cfg_path, "r", encoding="utf-8-sig") as f:
         return json.load(f)
 
@@ -560,7 +569,7 @@ def verifier_audio_avec_whisper(project_path: str, config: dict = None) -> dict:
     log("=== Vérification Whisper ===")
 
     try:
-        sys.path.insert(0, "C:\\StudioIA\\modules")
+        paths.ajouter_modules_au_path()
         from tts.whisper_check import verifier_audio_projet
 
         seuil = config.get("verification_similarity_threshold", 0.3)

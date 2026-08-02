@@ -21,6 +21,15 @@ import gc
 from pathlib import Path
 from datetime import datetime
 
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent
+    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
+        _rac = _rac.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
+
 # Import for thumbnail standalone
 from modules.thumbnail.thumbnail_standalone_gui import ThumbnailGeneratorGUI
 
@@ -35,14 +44,14 @@ except:
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-# Paths
-CONFIG_PATH = "C:\\StudioIA-Next\\config.json"
-PROJECTS_PATH = "C:\\StudioIA-Next\\projects"
-ASSETS_PATH = "C:\\StudioIA\\assets"
-LOGS_PATH = "C:\\StudioIA\\logs"
+# Paths (résolus via core/paths.py)
+CONFIG_PATH = str(paths.config_path())
+PROJECTS_PATH = str(paths.PROJECTS_DIR)
+ASSETS_PATH = str(paths.ASSETS_DIR)
+LOGS_PATH = str(paths.LOGS_DIR)
 
 # Import modules
-sys.path.insert(0, "C:\\StudioIA\\modules")
+paths.ajouter_modules_au_path()
 
 class StudioIAApp(ctk.CTk):
     def __init__(self):
@@ -365,7 +374,7 @@ class StudioIAApp(ctk.CTk):
         self.log(f"Création du projet: {sujet}")
 
         # Générer un nom court à partir du sujet pour le dossier et l'id
-        sys.path.insert(0, "C:\\StudioIA-Next\\modules\\brain")
+        sys.path.insert(0, str(paths.MODULES_DIR / "brain"))
         from name_project import generer_nom_court
         project_id = generer_nom_court(sujet, "fr")
         project_path = Path(PROJECTS_PATH) / project_id
@@ -421,7 +430,7 @@ class StudioIAApp(ctk.CTk):
         # Step 1: Script
         if etapes.get("script") != "termine":
             self.log("Étape 1/5: Génération du script...")
-            self._run_step("C:\\StudioIA\\modules\\brain\\generate_script.py", project_path)
+            self._run_step(str(paths.MODULES_DIR / "brain" / "generate_script.py"), project_path)
             if not self._check_step_ok(pjson, "script"):
                 self.log("ÉCHEC à l'étape Script - abandon du pipeline")
                 return
@@ -431,7 +440,7 @@ class StudioIAApp(ctk.CTk):
         # Step 2: Audio
         if etapes.get("audio") != "termine":
             self.log("Étape 2/5: Génération audio TTS...")
-            self._run_step("C:\\StudioIA\\modules\\tts\\run_tts.py", project_path)
+            self._run_step(str(paths.MODULES_DIR / "tts" / "run_tts.py"), project_path)
             if not self._check_step_ok(pjson, "audio"):
                 self.log("ÉCHEC à l'étape Audio - abandon du pipeline")
                 return
@@ -441,14 +450,14 @@ class StudioIAApp(ctk.CTk):
         # Step 3: Audio (ComposIA musique de fond)
         if etapes.get("musique_fond") != "termine":
             self.log("Étape 3/5: Génération musique de fond (ComposIA)...")
-            self._run_step("C:\\StudioIA\\modules\\audio\\composia_config.py", project_path)
+            self._run_step(str(paths.MODULES_DIR / "audio" / "composia_config.py"), project_path)
         else:
             self.log("Étape 3/5: Musique déjà générée, on saute.")
 
         # Step 4: Images
         if etapes.get("images") != "termine":
             self.log("Étape 4/5: Téléchargement images...")
-            self._run_step("C:\\StudioIA\\modules\\images\\library_manager.py", project_path)
+            self._run_step(str(paths.MODULES_DIR / "images" / "library_manager.py"), project_path)
             if not self._check_step_ok(pjson, "images"):
                 self.log("ÉCHEC à l'étape Images - abandon du pipeline")
                 return
@@ -458,7 +467,7 @@ class StudioIAApp(ctk.CTk):
         # Step 5: Video
         if etapes.get("video") != "termine":
             self.log("Étape 5/5: Montage vidéo...")
-            self._run_step("C:\\StudioIA\\modules\\video\\build_video.py", project_path)
+            self._run_step(str(paths.MODULES_DIR / "video" / "build_video.py"), project_path)
             if not self._check_step_ok(pjson, "video"):
                 self.log("ÉCHEC à l'étape Vidéo")
                 return
@@ -468,7 +477,7 @@ class StudioIAApp(ctk.CTk):
         # Thumbnail
         if etapes.get("thumbnail") != "termine":
             self.log("Étape: Génération thumbnail...")
-            self._run_step("C:\\StudioIA\\modules\\thumbnail\\thumbnail_builder.py", project_path)
+            self._run_step(str(paths.MODULES_DIR / "thumbnail" / "thumbnail_builder.py"), project_path)
         else:
             self.log("Étape: Thumbnail déjà généré, on saute.")
 
@@ -842,7 +851,7 @@ class StudioIAApp(ctk.CTk):
         self.update_idletasks()
 
         self.log("Lancement du gestionnaire d'assets...")
-        subprocess.Popen([sys.executable, "C:\\StudioIA\\modules\\assets_manager.py"])
+        subprocess.Popen([sys.executable, str(paths.MODULES_DIR / "assets_manager.py")])
         ctk.CTkButton(
             self.content,
             text="Retour au menu",
@@ -865,7 +874,7 @@ class StudioIAApp(ctk.CTk):
         self.update_idletasks()
 
         self.log("Lancement du générateur Shorts...")
-        subprocess.Popen([sys.executable, "C:\\StudioIA\\modules\\shorts\\generate_shorts.py"])
+        subprocess.Popen([sys.executable, str(paths.MODULES_DIR / "shorts" / "generate_shorts.py")])
         ctk.CTkButton(
             self.content,
             text="Retour au menu",
@@ -907,7 +916,7 @@ class StudioIAApp(ctk.CTk):
         self.update_idletasks()
 
         self.log("Renommage des projets...")
-        subprocess.Popen([sys.executable, "C:\\StudioIA\\modules\\brain\\rename_projects.py"])
+        subprocess.Popen([sys.executable, str(paths.MODULES_DIR / "brain" / "rename_projects.py")])
         ctk.CTkButton(
             self.content,
             text="Retour au menu",

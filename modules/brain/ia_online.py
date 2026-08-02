@@ -13,6 +13,15 @@ import json
 import requests
 from pathlib import Path
 
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent
+    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
+        _rac = _rac.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
+
 
 # ============================================================
 # Configuration
@@ -31,7 +40,7 @@ def get_huggingface_key():
     """Récupère la clé Hugging Face depuis config ou environnement"""
     # D'abord essayer depuis config.json
     try:
-        config_path = Path("C:\\StudioIA\\config.json")
+        config_path = paths.config_path()
         if config_path.exists():
             with open(config_path, encoding="utf-8") as f:
                 config = json.load(f)
@@ -42,9 +51,9 @@ def get_huggingface_key():
 
     # Ensuite essayer depuis un fichier dédié
     try:
-        keys_path = Path("C:\\StudioIA\\modules\\api_keys.py")
+        keys_path = paths.chemin_app("modules", "api_keys.py")
         if keys_path.exists():
-            sys.path.insert(0, "C:\\StudioIA\\modules")
+            paths.ajouter_modules_au_path()
             import api_keys
             if hasattr(api_keys, "HUGGINGFACE_KEY"):
                 return api_keys.HUGGINGFACE_KEY

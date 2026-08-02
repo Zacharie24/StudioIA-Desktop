@@ -9,6 +9,15 @@ except (ImportError, ValueError):
     sys.path.insert(0, str(Path(__file__).parent.parent))
     from api_keys import PEXELS_KEY, UNSPLASH_KEY
 
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent
+    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
+        _rac = _rac.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
+
 # Timeout pour les requêtes IA (évite les blocages)
 OLLAMA_TIMEOUT = 60
 
@@ -46,7 +55,7 @@ def ecrire_json(path, data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 def generer_mots_cles(sujet, langue):
-    style = lire_json("C:\\StudioIA\\style_redaction.json")
+    style = lire_json(paths.chemin_app("style_redaction.json"))
     eviter = ", ".join(style.get("mots_a_eviter", []))
     # Create a privilege list from the new style format
     privilegier_list = []
@@ -161,7 +170,7 @@ def nettoyer_memoire():
 def main():
     project_path = sys.argv[1]
     pjson = os.path.join(project_path, "project.json")
-    config = lire_json("C:\\StudioIA\\config.json")
+    config = lire_json(paths.config_path())
     data = lire_json(pjson)
 
     sujet = data["sujet"]

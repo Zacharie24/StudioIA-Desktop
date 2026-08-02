@@ -1,6 +1,6 @@
 @echo off
 REM StudioIA-Next — Lancement rapide du Dashboard Web
-cd /d "C:\StudioIA-Next"
+cd /d "C:\StudioIA-Desktop"
 TITLE StudioIA-Next Dashboard
 echo.
 echo === StudioIA-Next Web Dashboard ===

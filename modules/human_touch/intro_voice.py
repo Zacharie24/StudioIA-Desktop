@@ -18,6 +18,15 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent
+    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
+        _rac = _rac.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
 from datetime import datetime
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -353,8 +362,7 @@ def get_intro_projet(projet_nom):
 def _trouver_ffmpeg():
     """Trouve l'executable ffmpeg (chemin connu ou PATH)."""
     candidats = [
-        "C:\\StudioIA\\tools\\ffmpeg\\ffmpeg.exe",
-        "C:\\StudioIA-Next\\tools\\ffmpeg\\ffmpeg.exe",
+        str(paths.FFMPEG),
     ]
     for c in candidats:
         if Path(c).exists():

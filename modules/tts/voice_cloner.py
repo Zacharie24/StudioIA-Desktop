@@ -13,6 +13,15 @@ from pathlib import Path
 from datetime import datetime
 
 try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent
+    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
+        _rac = _rac.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
+
+try:
     import torch
     import torchaudio
     TORCH_AVAILABLE = True
@@ -31,8 +40,9 @@ try:
 except ImportError:
     WHISPER_AVAILABLE = False
 
-FFMPEG = "C:\\StudioIA\\tools\\ffmpeg\\ffmpeg.exe"
-CLONED_VOICES_DIR = "C:\\tts-pentest\\cloned_voices"
+FFMPEG = str(paths.FFMPEG)
+_tts_root = paths.tts_path()
+CLONED_VOICES_DIR = os.path.join(_tts_root, "cloned_voices") if _tts_root else str(paths.XTTS_DIR / "cloned_voices")
 
 def log(msg):
     print(f"[VOICE_CLONE] {msg}")
@@ -206,7 +216,7 @@ def mettre_a_jour_config_xtts():
     """
     voix_clonees = lister_voix_clonees()
 
-    config_path = "C:\\StudioIA\\modules\\tts\\voix_config.py"
+    config_path = str(paths.MODULES_DIR / "tts" / "voix_config.py")
 
     with open(config_path, "r", encoding="utf-8") as f:
         contenu = f.read()

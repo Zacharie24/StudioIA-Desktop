@@ -1,6 +1,15 @@
 ﻿import json, os, sys, subprocess, shutil, random
 from pathlib import Path
 
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent
+    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
+        _rac = _rac.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
+
 # Import audio cleanup module
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "audio"))
 from audio_cleanup import get_combined_audio_filter, nettoyer_audio_complet, verifier_audio_avec_whisper
@@ -9,7 +18,7 @@ from audio_cleanup import get_combined_audio_filter, nettoyer_audio_complet, ver
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "services"))
 from media.media_library import preparer_medias, MediaLibrary
 
-FFMPEG = "C:\\StudioIA\\tools\\ffmpeg\\ffmpeg.exe"
+FFMPEG = str(paths.FFMPEG)
 
 def log(msg):
     print(f"[VIDEO] {msg}")
@@ -392,7 +401,7 @@ def choisir_musique(music_path, project_path=None):
 
 def choisir_style(defaut="7"):
     import sys
-    sys.path.insert(0, "C:\\StudioIA\\modules\\utils")
+    sys.path.insert(0, str(paths.MODULES_DIR / "utils"))
     from timeout_input import choisir_avec_timeout
     print("\n[VIDEO] Style sous-titres :")
     for k, v in STYLES_SOUS_TITRES.items():
@@ -545,7 +554,7 @@ def ajouter_intro_humaine(project_path, video_finale):
 def main():
     project_path = sys.argv[1]
     pjson = os.path.join(project_path, "project.json")
-    config    = lire_json("C:\\StudioIA\\config.json")
+    config    = lire_json(paths.config_path())
     data      = lire_json(pjson)
     vid_cfg   = lire_video_config(project_path)
     crf, preset, use_zoompan = get_parametres_qualite(
@@ -771,7 +780,7 @@ def main():
         import importlib.util
         spec = importlib.util.spec_from_file_location(
             "gen_shotcut",
-            "C:\\StudioIA\\modules\\video\\gen_shotcut.py"
+            str(paths.MODULES_DIR / "video" / "gen_shotcut.py")
         )
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)

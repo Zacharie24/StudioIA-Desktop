@@ -1,6 +1,15 @@
 ﻿import json, os, sys, requests, re, shutil
 from pathlib import Path
 
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent
+    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
+        _rac = _rac.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
+
 def log(msg):
     print(f"[NOM] {msg}")
 
@@ -76,7 +85,7 @@ def renommer_tous_projets(projects_path):
             log(f"Deja bon : {p.name}")
 
 def main():
-    projects_path = "C:\\StudioIA\\projects"
+    projects_path = str(paths.PROJECTS_DIR)
     if len(sys.argv) > 1:
         projects_path = sys.argv[1]
     log(f"Renommage de tous les projets dans : {projects_path}")

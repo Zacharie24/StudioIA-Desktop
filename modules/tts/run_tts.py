@@ -9,6 +9,15 @@ except (ImportError, ValueError):
     sys.path.insert(0, str(Path(__file__).parent.parent))
     from tts.voix_config import VOIX_DISPONIBLES
 
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent
+    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
+        _rac = _rac.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
+
 def log(msg):
     print(f"[TTS] {msg}")
 
@@ -39,7 +48,7 @@ VOIX_DISPONIBLES = {
 
 def choisir_voix(voix_defaut="2"):
     import sys
-    sys.path.insert(0, "C:\\StudioIA\\modules\\utils")
+    sys.path.insert(0, str(paths.MODULES_DIR / "utils"))
     from timeout_input import choisir_avec_timeout
 
     print("\n[TTS] Voix disponibles :")
@@ -55,16 +64,14 @@ def choisir_voix(voix_defaut="2"):
     return VOIX_DISPONIBLES.get(choix, VOIX_DISPONIBLES[voix_defaut])
 
 def get_tts_path():
-    """Get TTS external path from config.json"""
-    try:
-        config = lire_json("C:\\StudioIA\\config.json")
-        return config.get("tts_external_path", "C:\\tts-pentest")
-    except:
-        return "C:\\tts-pentest"
+    """Chemin du moteur TTS externe (résolu via core/paths.py).
+    Retourne un chemin même si le pack est absent (le fallback Edge est alors utilisé)."""
+    t = paths.tts_path()
+    return t if t else str(paths.XTTS_DIR)
 
 def generer_chapitre_tts(ch_file, output_wav, moteur, voix, nom_projet, tts_path=None):
     if tts_path is None:
-        tts_path = "C:\\tts-pentest"
+        tts_path = get_tts_path()
 
     with open(ch_file, "r", encoding="utf-8") as f:
         texte = f.read()
@@ -83,7 +90,7 @@ resultat = generer_long_texte(
 )
 print("RESULT:" + str(resultat))
 """
-    script_tmp = Path("C:/StudioIA/temp/appel_tts.py")
+    script_tmp = paths.TEMP_DIR / "appel_tts.py"
     script_tmp.parent.mkdir(parents=True, exist_ok=True)
     with open(script_tmp, "w", encoding="utf-8") as f:
         f.write(script_appel)

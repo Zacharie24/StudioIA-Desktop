@@ -1,6 +1,15 @@
 import json, os, sys, requests, subprocess, random, shutil, re, time
 from pathlib import Path
 
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent
+    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
+        _rac = _rac.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
+
 # Import voix_config - support pour module et mode direct
 try:
     from ..tts.voix_config import VOIX_MAP_SHORTS
@@ -15,12 +24,12 @@ try:
     from ..audio.composia import generer_musique_fond, preparer_audio_pour_video
 except (ImportError, ValueError):
     # En mode direct
-    composia_path = Path(r"C:\\StudioIA-Next\modules\audio")
+    composia_path = paths.MODULES_DIR / "audio"
     sys.path.insert(0, str(composia_path))
     from composia import generer_musique_fond, preparer_audio_pour_video
 
-FFMPEG = "C:\\StudioIA\\tools\\ffmpeg\\ffmpeg.exe"
-MUSIC_DIR = "C:\\StudioIA\\assets\\music"
+FFMPEG = str(paths.FFMPEG)
+MUSIC_DIR = str(paths.MUSIC_DIR)
 
 def log(msg):
     print(f"[SHORTS] {msg}")
@@ -201,12 +210,16 @@ COMMENCE DIRECTEMENT PAR LE SUJET — JAMAIS par une phrase d'introduction ou de
     return ollama(prompt)
 
 def _run_tts_script(texte, output_wav, moteur, voix, nom_fichier="short_audio"):
-    """Execute une generation TTS via le venv C:\\tts-pentest. Retourne True si OK."""
-    venv_python = "C:\\tts-pentest\\venv\\Scripts\\python.exe"
+    """Execute une generation TTS via le venv du pack XTTS (résolu par core/paths)."""
+    tts_root = paths.tts_path()
+    if not tts_root:
+        log("Pack TTS (XTTS) absent pour ce short — abandon TTS local")
+        return False
+    venv_python = os.path.join(tts_root, "venv", "Scripts", "python.exe")
 
     script = f"""
 import sys
-sys.path.insert(0, r"C:\\tts-pentest")
+sys.path.insert(0, r"{tts_root}")
 from tts_total import initialiser_projet, generer_long_texte
 import shutil, os
 
@@ -228,7 +241,7 @@ else:
         f.write(script)
 
     try:
-        subprocess.run([venv_python, script_path], cwd="C:\\tts-pentest", capture_output=False)
+        subprocess.run([venv_python, script_path], cwd=tts_root, capture_output=False)
     except Exception:
         pass
     finally:
@@ -417,7 +430,7 @@ def ajouter_musique(video_path, music_path, output_path, music_volume=0.15):
 
 def lire_video_config(project_path=None):
     # Pour les shorts, on utilise la config globale
-    cfg_path = "C:\\StudioIA\\config_video.json"
+    cfg_path = str(paths.chemin_app("config_video.json"))
     if os.path.exists(cfg_path):
         with open(cfg_path, "r", encoding="utf-8-sig") as f:
             return json.load(f)
@@ -612,7 +625,7 @@ def generer_thumbnail_short(titre, output_path, style_couleur=(255,215,0)):
         return False
 
 def main():
-    config = lire_json("C:\\StudioIA\\config.json")
+    config = lire_json(paths.config_path())
 
     # Detecter si on reprend un projet existant (chemin passe en argument)
     project_path = sys.argv[1] if len(sys.argv) > 1 else None
@@ -781,7 +794,7 @@ def main():
             import importlib.util
             spec = importlib.util.spec_from_file_location(
                 "gen_shotcut",
-                "C:\\StudioIA\\modules\\video\\gen_shotcut.py"
+                str(paths.MODULES_DIR / "video" / "gen_shotcut.py")
             )
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)

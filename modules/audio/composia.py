@@ -7,7 +7,7 @@ Usage dans StudioIA :
     from modules.audio.composia import generer_musique_fond
 
     result = generer_musique_fond(
-        projet_path="C:\\StudioIA\\projects\\mon_projet",
+        projet_path="<dossier_projets>/mon_projet",
         prompt="Fais-moi une musique paisible pour une prière du soir",
         nom="musique_fond",
         duree_cible=180  # secondes
@@ -23,12 +23,21 @@ import io
 from pathlib import Path
 from datetime import datetime
 
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent
+    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
+        _rac = _rac.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
+
 # ============================================================
 # Configuration
 # ============================================================
 
-# Chemin absolu vers ComposIA
-COMPOSIA_PATH = Path(r"C:\\StudioIA-Next\ComposIA")
+# Chemin vers ComposIA (résolu depuis la racine de l'application)
+COMPOSIA_PATH = paths.COMPOSIA_DIR
 
 # Vérification des chemins
 if not COMPOSIA_PATH.exists():
@@ -555,7 +564,7 @@ def copier_fichiers_composition(projet_path, musique_path):
     nom_composition = source_dir.name
 
     # Chercher le dossier de composition dans ComposIA/compositions/
-    composia_compositions = Path("C:/StudioIA/ComposIA/compositions")
+    composia_compositions = paths.COMPOSITIONS_DIR
     source_compo = composia_compositions / nom_composition
 
     if source_compo.exists():
@@ -633,14 +642,14 @@ def main():
         projet_path = args.projet
     else:
         # Chercher un projet recent dans projects/
-        projects_dir = Path("C:\\StudioIA\\projects")
+        projects_dir = paths.PROJECTS_DIR
         if projects_dir.exists():
             projects = list(projects_dir.iterdir())
             if projects:
                 projet_path = str(projects[-1])
                 log(f"Aucun projet specifie, utilisation de: {projet_path}")
             else:
-                log("Aucun projet trouve dans C:\\StudioIA\\projects", "ERROR")
+                log(f"Aucun projet trouve dans {paths.PROJECTS_DIR}", "ERROR")
                 return 1
         else:
             log("Dossier projects non trouve", "ERROR")

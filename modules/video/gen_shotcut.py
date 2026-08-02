@@ -1,9 +1,18 @@
 ﻿import json, os, sys, subprocess, re, random, math
 from pathlib import Path
 
-FFMPEG    = "C:\\StudioIA\\tools\\ffmpeg\\ffmpeg.exe"
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent
+    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
+        _rac = _rac.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
+
+FFMPEG    = str(paths.FFMPEG)
 SHOTCUT   = "C:\\Program Files\\Shotcut\\shotcut.exe"
-MUSIC_DIR = "C:\\StudioIA\\assets\\music"
+MUSIC_DIR = str(paths.MUSIC_DIR)
 
 def get_projet_musique(project_path):
     """Chercher la musique ComposIA dans le dossier audio du projet"""
@@ -537,7 +546,7 @@ def detect_project_type(project_path):
     return None
 
 if __name__ == "__main__":
-    project_path = sys.argv[1] if len(sys.argv) > 1 else "C:\\StudioIA\\projects\\video_20260614_074242"
+    project_path = sys.argv[1] if len(sys.argv) > 1 else str(paths.PROJECTS_DIR / "video_20260614_074242")
     auto = len(sys.argv) > 2 and sys.argv[2] == "--auto"
 
     project_type = detect_project_type(project_path)

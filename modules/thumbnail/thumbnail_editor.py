@@ -3,6 +3,15 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
 import random
 
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent
+    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
+        _rac = _rac.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
+
 def log(msg):
     print(f"[THUMB-EDIT] {msg}")
 
@@ -233,5 +242,5 @@ def menu_editeur(project_path):
             break
 
 if __name__ == "__main__":
-    project_path = sys.argv[1] if len(sys.argv) > 1 else "C:\\StudioIA\\projects\\test_rapide"
+    project_path = sys.argv[1] if len(sys.argv) > 1 else str(paths.PROJECTS_DIR / "test_rapide")
     menu_editeur(project_path)

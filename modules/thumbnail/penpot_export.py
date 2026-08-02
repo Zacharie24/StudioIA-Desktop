@@ -1,6 +1,15 @@
 ﻿import json, os, sys, requests, subprocess
 from pathlib import Path
 
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent
+    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
+        _rac = _rac.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
+
 PENPOT_URL = "http://localhost:9001"
 HEADERS = {"Accept": "application/json", "Content-Type": "application/json"}
 
@@ -12,7 +21,7 @@ def lire_json(path):
         return json.load(f)
 
 def get_credentials():
-    creds_path = "C:\\StudioIA\\tools\\penpot\\credentials.json"
+    creds_path = str(paths.chemin_app("tools", "penpot", "credentials.json"))
     if os.path.exists(creds_path):
         c = lire_json(creds_path)
         return c.get("email",""), c.get("password","")
@@ -150,7 +159,7 @@ def ouvrir_penpot(project_id, file_id):
     subprocess.Popen(["cmd", "/c", "start", url], shell=True)
 
 def main():
-    project_path = sys.argv[1] if len(sys.argv) > 1 else "C:\\StudioIA\\projects\\test_rapide"
+    project_path = sys.argv[1] if len(sys.argv) > 1 else str(paths.PROJECTS_DIR / "test_rapide")
 
     thumb_json = os.path.join(project_path, "thumbnail", "thumbnail.json")
     pjson      = os.path.join(project_path, "project.json")

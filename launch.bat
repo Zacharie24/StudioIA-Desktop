@@ -3,7 +3,7 @@ REM ============================================
 REM StudioIA-Next — Lanceur automatique
 REM ============================================
 TITLE StudioIA-Next
-cd /d "C:\StudioIA-Next"
+cd /d "C:\StudioIA-Desktop"
 
 :MENU
 cls

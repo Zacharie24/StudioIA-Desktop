@@ -3,7 +3,7 @@ REM ============================================
 REM StudioIA-Next — Compléter les projets en cours
 REM ============================================
 TITLE StudioIA-Next - Completion Projets
-cd /d "C:\StudioIA-Next"
+cd /d "C:\StudioIA-Desktop"
 
 echo ============================================
 echo   Completion automatique des projets

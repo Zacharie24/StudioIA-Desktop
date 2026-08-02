@@ -9,12 +9,21 @@ except ImportError:
     sys.path.insert(0, str(parent_dir))
     from api_keys import PEXELS_KEY, UNSPLASH_KEY
 
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent
+    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
+        _rac = _rac.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
+
 def log(msg):
     print(f"[ASSETS] {msg}")
 
-FONTS_DIR  = "C:\\StudioIA\\assets\\fonts"
-MUSIC_DIR  = "C:\\StudioIA\\assets\\music"
-BG_DIR     = "C:\\StudioIA\\assets\\backgrounds"
+FONTS_DIR  = str(paths.FONTS_DIR)
+MUSIC_DIR  = str(paths.MUSIC_DIR)
+BG_DIR     = str(paths.BACKGROUNDS_DIR)
 
 # Polices gratuites Google Fonts (via GitHub - google/fonts)
 # Format: nom -> liste de dossiers dans ofl/ pour cette police

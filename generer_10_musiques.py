@@ -12,10 +12,19 @@ import shutil
 import subprocess
 from pathlib import Path
 
-# Chemin vers ComposIA
-COMPOSIA_PATH = Path(r"C:\\StudioIA-Next\ComposIA")
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent
+    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
+        _rac = _rac.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
+
+# Chemin vers ComposIA (résolu depuis la racine de l'application)
+COMPOSIA_PATH = paths.COMPOSIA_DIR
 COMPOSIA_MUSICS_DIR = COMPOSIA_PATH / "compositions"
-PROJECT_PATH = Path(r"C:\\StudioIA-Next\projects\calme_angoisse_problemes")
+PROJECT_PATH = paths.PROJECTS_DIR / "calme_angoisse_problemes"
 AUDIO_DIR = PROJECT_PATH / "audio"
 SONS_DIR = PROJECT_PATH / "sons_de_fond"
 
@@ -48,7 +57,7 @@ def fusionner_musiques():
     volume_par_musique = round(1.0 / len(musiques), 3)
     volume_db = int(20 * 3.322 * volume_par_musique)  # log10(x) = log2(x) / log2(10) ≈ log2(x) / 3.322
 
-    cmd = ["C:\\StudioIA\\tools\\ffmpeg\\ffmpeg.exe", "-y"]
+    cmd = [str(paths.FFMPEG), "-y"]
     for m in musiques:
         cmd.extend(["-i", str(m)])
 

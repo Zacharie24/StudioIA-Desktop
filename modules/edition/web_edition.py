@@ -74,7 +74,7 @@ def generer_shorts_via_web(sujet, type_contenu="priere", langue="fr",
     }
 
     try:
-        # Dossier projet Shorts (dans C:\StudioIA-Next\projects)
+        # Dossier projet Shorts (résolu via core/paths)
         projects_path = Path(config.get("projects_path", str(Path(__file__).parent.parent.parent / "projects")))
         projects_path.mkdir(parents=True, exist_ok=True)
         shorts_id = f"shorts_{_slug(sujet)}_{int(time.time())}"
@@ -125,7 +125,7 @@ def generer_shorts_via_web(sujet, type_contenu="priere", langue="fr",
             script_path.write_text(script, encoding="utf-8")
             log(f"  Short {i}: script {len(script.split())} mots")
 
-            # Audio (TTS venv C:\\tts-pentest)
+            # Audio (TTS via le venv du pack XTTS résolu par core/paths)
             try:
                 ok_audio = generer_audio_short(script, str(audio_path), langue, voix_choix)
             except Exception as e:

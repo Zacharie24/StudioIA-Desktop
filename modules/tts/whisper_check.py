@@ -1,6 +1,15 @@
 ﻿import os, sys, json, requests
 from pathlib import Path
 
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent
+    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
+        _rac = _rac.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
+
 def log(msg):
     print(f"[WHISPER] {msg}")
 
@@ -74,11 +83,15 @@ def regenerer_segment_tts(texte_original, output_path, langue, voix_config):
         with open(txt_temp, "w", encoding="utf-8") as f:
             f.write(texte_original)
 
-        # Utiliser le module TTS de StudioIA directement
-        venv_python = "C:\\tts-pentest\\venv\\Scripts\\python.exe"
+        # Utiliser le module TTS de StudioIA directement (pack résolu via core/paths)
+        tts_root = paths.tts_path()
+        if not tts_root:
+            log("Pack TTS (XTTS) absent — regeneration impossible")
+            return False
+        venv_python = os.path.join(tts_root, "venv", "Scripts", "python.exe")
         script = f"""
 import sys
-sys.path.insert(0, r"C:\\tts-pentest")
+sys.path.insert(0, r"{tts_root}")
 from tts_total import initialiser_projet, generer_long_texte
 from pathlib import Path
 
@@ -106,7 +119,7 @@ else:
         result = subprocess.run(
             [venv_python, script_path],
             capture_output=False,
-            cwd="C:\\tts-pentest"
+            cwd=tts_root
         )
 
         # Nettoyage
@@ -226,7 +239,7 @@ def verifier_audio_projet(project_path, seuil_similarite=0.3, regenerer=True):
     return problemes
 
 def main():
-    project_path = sys.argv[1] if len(sys.argv) > 1 else "C:\\StudioIA\\projects\\test_rapide"
+    project_path = sys.argv[1] if len(sys.argv) > 1 else str(paths.PROJECTS_DIR / "test_rapide")
     verifier_audio_projet(project_path)
 
 if __name__ == "__main__":
