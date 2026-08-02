@@ -32,6 +32,12 @@ installer/dist/
 # ===== Pack XTTS optionnel =====
 xtts/
 
+# ===== Médias volumineux (présents sur disque, jamais versionnés) =====
+# Le repo GitHub reste léger ; les backgrounds/vidéos restent sur la machine
+# de build et sont embarqués dans le Setup.exe par l'installateur.
+assets/backgrounds/
+assets/videos/
+
 # ===== Divers / dev =====
 settings.local.json
 *.log

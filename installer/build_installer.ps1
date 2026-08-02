@@ -25,13 +25,16 @@ param(
     [switch]$Setup = $false,          # Force le livrable app
     [switch]$Models = $false,         # Force le livrable modèles
     [switch]$SkipShellBuild = $false, # Ne pas rebuild le shell Tauri
-    [string]$Iscc = ""                # Chemin explicite vers ISCC.exe
+    [string]$Iscc = "",               # Chemin explicite vers ISCC.exe
+    [string]$Version = ""             # Version (ex "1.1.0") ; sinon lue depuis tauri.conf.json
 )
 
 $ErrorActionPreference = "Stop"
 $scriptDir = $PSScriptRoot
 $root = Split-Path -Parent $scriptDir   # C:\StudioIA-Desktop
 Set-Location $root
+# Cargo n'est pas dans le PATH PowerShell par défaut (rustup → %USERPROFILE%\.cargo\bin).
+$env:Path = "$env:USERPROFILE\.cargo\bin;" + $env:Path
 
 # ---------------------------------------------------------------------------
 # Détection d'ISCC.exe (Inno Setup 6)
@@ -91,14 +94,23 @@ Write-Host "ISCC : $iscc" -ForegroundColor Cyan
 
 function Invoke-Inno {
     param([switch]$WithModels)
-    $flags = "/dMODELS_ONLY=$(if ($WithModels) {1} else {0})", "/dAppVersion=1.0.0", "/dSrcDir=$PSScriptRoot\"
-    $args = @($flags) + @("$PSScriptRoot\studioia.iss")
+    $flags = "/dMODELS_ONLY=$(if ($WithModels) {1} else {0})", "/dAppVersion=$Version", "/dSrcDir=$scriptDir\"
+    $args = @($flags) + @("$scriptDir\studioia.iss")
     & $iscc $args
     if ($LASTEXITCODE -ne 0) { throw "Échec de la compilation Inno (exit $LASTEXITCODE)." }
 }
 
+# ---------------------------------------------------------------------------
+# Résoudre la version (param -Version sinon lue dans src-tauri/tauri.conf.json)
+# ---------------------------------------------------------------------------
+if (-not $Version) {
+    $conf = Get-Content "$root\src-tauri\tauri.conf.json" -Raw | ConvertFrom-Json
+    $Version = $conf.version
+    Write-Host "Version lue dans tauri.conf.json : $Version" -ForegroundColor Cyan
+}
+
 if ($Setup) {
-    Write-Host "`n=== Livrable : StudioIA-Setup.exe ===" -ForegroundColor Green
+    Write-Host "`n=== Livrable : StudioIA-Setup.exe (v$Version) ===" -ForegroundColor Green
     Invoke-Inno
 }
 if ($Models) {
