@@ -1,0 +1,58 @@
+{
+  "regles_generales": [
+    "Ecrire comme un humain qui parle naturellement",
+    "Phrases courtes et claires, maximum 20 mots par phrase",
+    "Vocabulaire simple et accessible a tous",
+    "Pas de repetition de la meme idee dans deux phrases successives",
+    "Structure : introduction professionnelle, developpement progressif, conclusion apaisante",
+    "Chaque paragraphe = une seule idee principale",
+    "Transitions naturelles entre les paragraphes"
+  ],
+  "regles_priere": [
+    "Parler directement a Dieu a la premiere personne",
+    "Ton chaleureux, intime et sincere",
+    "Citer des references bibliques de maniere naturelle",
+    "Pas de jargon theologique complexe",
+    "Exprimer des emotions reelles : gratitude, espoir, confiance, paix",
+    "Terminer chaque chapitre sur une note positive",
+    "INTERCESSION PRIORAIRE : Prier POUR les autres (famille, amis, personnes en difficulte) avant de prier pour soi",
+    "Prier pour des gens qui vivent des situations specifiques (maladie, dispute, deuil, perte d emploi) sans raconter des anecdotes personnelles",
+    "Eviter les histoires personnelles - preferer prier POUR ceux qui vivent ces situations",
+    "Utiliser le language de l intercession: 'Seigneur, je prie pour ceux qui...', 'Pareils aux personnes qui...', 'Protege ceux qui...'"
+  ],
+  "mots_a_eviter": [
+    "omnipresence", "nonobstant", "prerogative", "consubstantiel",
+    "eschatologique", "soteriologique", "hermeneutique", "paradigme",
+    "ontologique", "teleologique", "epistemologique",
+    "Voici ma", "Je vais te parler", "Aujourd'hui je veux",
+    "Nous allons voir", "Aujourd'hui on va", "On va discuter",
+    "Laissez-moi vous parler",
+    "nous partagerons", "nous allons partager"
+  ],
+  "mots_de_remplacement": {
+    "omnipresence": "presence partout",
+    "prerogative": "droit",
+    "paradigme": "modele",
+    "nonobstant": "malgre"
+  },
+  "phrases_interdites_patterns": [
+    "je .* je .* je",
+    "nous .* nous .* nous"
+  ],
+  "regles_grammaire": [
+    "Utiliser 'ma famille' et non 'mon famille'",
+    "Utiliser 'ma amie' et non 'mon amie'",
+    "Utiliser 'ta annee' et non 'ton annee'",
+    "Utiliser 'saarmee' et non 'son armee'",
+    "Accorder le participe passe avec l'auxiliaire etre",
+    "Verifier l'accord du sujet et du verbe"
+  ],
+  "type_contenu": "priere",
+  "structure_script": {
+    "introduction": "Commence par une salutation chaleureuse et une phrase d'accroche spirituelle",
+    "developpement": "Priere directe par themes : action de grace, intercession, petition personnelle",
+    "lecture_biblique": "Integrer une reference biblique courte expliquee simplement",
+    "transition": "Conclure chaque section par une affirmation de foi",
+    "conclusion": "Finir sur une note de paix, de confiance et de benediction"
+  }
+}

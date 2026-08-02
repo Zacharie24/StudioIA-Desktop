@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>StudioIA — Touche humaine (voix)</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; }
+        .navbar { background: #1e293b; padding: 1rem 2rem; display: flex; align-items: center; gap: 2rem; border-bottom: 1px solid #334155; flex-wrap: wrap; }
+        .navbar h1 { color: #3b82f6; font-size: 1.3rem; }
+        .navbar a { color: #94a3b8; text-decoration: none; font-size: 0.9rem; padding: 0.3rem 0.8rem; border-radius: 4px; }
+        .navbar a:hover { color: #fff; background: #334155; }
+        .navbar a.active { color: #3b82f6; background: #1e3a5f; }
+        .container { max-width: 1000px; margin: 0 auto; padding: 2rem; }
+        h2 { margin-bottom: 0.5rem; font-size: 1.4rem; }
+        p.sub { color: #64748b; margin-bottom: 1.5rem; font-size: 0.9rem; }
+
+        .card { background: #1e293b; border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem; border: 1px solid #334155; }
+        .card h3 { color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.8rem; letter-spacing: 0.05em; }
+        .card h3 .badge { float: right; }
+
+        .badge { font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 600; }
+        .badge-on { background: #064e3b; color: #34d399; }
+        .badge-off { background: #451a03; color: #fb923c; }
+        .badge-rec { background: #450a0a; color: #f87171; }
+
+        .btn { padding: 0.65rem 1.3rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; color: #fff; transition: background 0.15s; }
+        .btn-primary { background: #3b82f6; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-success { background: #10b981; }
+        .btn-success:hover { background: #059669; }
+        .btn-danger { background: #ef4444; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-secondary { background: #334155; }
+        .btn-secondary:hover { background: #475569; }
+        .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+        input[type=text], select, textarea {
+            width: 100%; padding: 0.7rem; border-radius: 6px; border: 1px solid #334155;
+            background: #0f172a; color: #fff; font-size: 0.95rem; margin-bottom: 0.6rem;
+        }
+        input[type=text]:focus, select:focus, textarea:focus { outline: none; border-color: #3b82f6; }
+        textarea { min-height: 120px; resize: vertical; font-size: 1rem; line-height: 1.5; }
+        label { display: block; color: #94a3b8; font-size: 0.8rem; margin-bottom: 0.3rem; }
+
+        .switch { position: relative; display: inline-block; width: 52px; height: 28px; vertical-align: middle; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; inset: 0; background: #475569; border-radius: 28px; transition: 0.3s; }
+        .slider:before { position: absolute; content: ""; height: 22px; width: 22px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
+        input:checked + .slider { background: #10b981; }
+        input:checked + .slider:before { transform: translateX(24px); }
+
+        .row { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; }
+        .row > div { flex: 1; min-width: 200px; }
+
+        /* Indicateur DB */
+        .meter-container { margin-top: 0.5rem; }
+        .meter-label { display: flex; justify-content: space-between; font-size: 0.78rem; color: #64748b; margin-bottom: 0.3rem; }
+        .meter-track { background: #0f172a; border-radius: 6px; height: 26px; position: relative; overflow: hidden; border: 1px solid #334155; }
+        .meter-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #64748b, #34d399 40%, #fbbf24 75%, #ef4444 95%); transition: width 0.08s; }
+        .meter-peak { position: absolute; top: 0; left: 50%; width: 3px; height: 100%; background: #fff; opacity: 0.9; }
+        .meter-readout { display: flex; justify-content: space-between; margin-top: 0.3rem; font-size: 0.8rem; }
+        .meter-readout .db { color: #34d399; font-weight: bold; font-size: 1rem; }
+        .meter-readout .state { color: #64748b; }
+        .zone-ok { color: #34d399; }
+        .zone-faible { color: #fbbf24; }
+        .zone-fort { color: #ef4444; }
+
+        .timeline { height: 8px; border-radius: 4px; background: #0f172a; margin-top: 0.5rem; overflow: hidden; }
+        .timeline-bar { height: 100%; background: #3b82f6; width: 0%; }
+
+        .error { color: #f87171; padding: 0.8rem; background: #450a0a; border-radius: 6px; margin-bottom: 1rem; }
+        .info { color: #60a5fa; padding: 0.8rem; background: #1e3a5f; border-radius: 6px; margin-bottom: 1rem; font-size: 0.85rem; }
+        .hidden { display: none !important; }
+        .mini { font-size: 0.8rem; color: #64748b; }
+        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid #1e293b; font-size: 0.85rem; }
+        .list-item:last-child { border-bottom: none; }
+        .pulse { animation: pulse 1.2s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+        .mic-waves { display: inline-block; font-size: 1.1rem; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>StudioIA-Next</h1>
+        <a href="/">Dashboard</a>
+        <a href="/automation">Automation</a>
+        <a href="/edition">Edition</a>
+        <a href="/youtube">YouTube</a>
+        <a href="/audit">Audit de chaîne</a>
+        <a href="/apprentissage">Apprentissage</a>
+        <a href="/human-touch" class="active">Touche humaine</a>
+        <a href="/config">Configuration</a>
+        <div style="margin-left:auto; display:flex; gap:1.1rem; align-items:center; font-size:0.8rem; color:#94a3b8; white-space:nowrap;" title="Etat du PC">
+            <span>CPU <b id="stCpu" style="color:#e2e8f0;">-</b>%</span>
+            <span>RAM <b id="stRam" style="color:#e2e8f0;">-</b>%</span>
+            <span>DISK <b id="stDisk" style="color:#e2e8f0;">-</b>%</span>
+            <span>GPU <b id="stGpu" style="color:#e2e8f0;">-</b></span>
+        </div>
+    </nav>
+    <div class="container">
+        <h2>🎙️ Touche humaine — ta voix dans les vidéos</h2>
+        <p class="sub">
+            Ajoute ta vraie voix en introduction de chaque vidéo pour apporter une valeur humaine
+            réelle (évite la pénalisation des contenus purement générés par IA). Active, génère le
+            texte, enregistre-toi au micro, et le pipeline ajoute automatiquement ton intro.
+        </p>
+
+        <div id="error" class="error hidden"></div>
+
+        <!-- ===== Activation ===== -->
+        <div class="card">
+            <h3>Activation <span id="badgeActif" class="badge badge-off">DÉSACTIVÉ</span></h3>
+            <div class="row">
+                <div style="flex:0 0 auto; min-width:0;">
+                    <label class="switch">
+                        <input type="checkbox" id="toggleActif">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div style="flex:2;">
+                    <p class="mini" style="margin-top:0.2rem;">
+                        Quand c'est activé, chaque projet attend ton enregistrement vocal en début de vidéo.
+                        Une fois ton enregistrement fait, le système continue tout seul pour le reste.
+                    </p>
+                </div>
+            </div>
+
+            <div style="margin-top:1rem;">
+                <label>Mode de l'intro</label>
+                <select id="modeSelect" onchange="changerMode()">
+                    <option value="ia">🤖 IA — générer le texte d'intro à lire (défaut)</option>
+                    <option value="libre">🎙️ Libre — je fais mon intro moi-même, l'IA ne génère aucun texte</option>
+                </select>
+                <p class="mini" id="modeHelp">
+                    Mode IA : le pipeline génère un texte d'intro que tu lis au micro.
+                </p>
+            </div>
+        </div>
+
+        <!-- ===== Generation du texte ===== -->
+        <div class="card" id="cardGen">
+            <h3>1️⃣ Générer le texte d'intro</h3>
+            <label>Sujet de la vidéo</label>
+            <div class="row">
+                <div><input type="text" id="sujetInput" placeholder="Ex: La puissance de la prière du matin"></div>
+                <div style="flex:0 0 auto; min-width:0;"><label>Durée (s)</label>
+                    <input type="number" id="dureeInput" value="30" min="10" max="120" style="width:90px;">
+                </div>
+                <div style="flex:0 0 auto; min-width:0;">
+                    <button class="btn btn-primary" id="btnGenerer" onclick="genererIntro()">Générer le texte</button>
+                </div>
+            </div>
+            <div id="genStatus" class="mini" style="margin-bottom:0.5rem;"></div>
+
+            <!-- Pipeline en attente de ta voix : on pref-remplit le texte genere -->
+            <div id="pendingNotice" class="hidden" style="background:#1e3a5f; border:1px solid #3b82f6; color:#93c5fd; padding:0.7rem 1rem; border-radius:6px; margin-bottom:0.7rem; font-size:0.85rem;">
+                ⏳ <strong>Le pipeline attend ton enregistrement</strong> pour le projet <b id="pendingProjet"></b>.<br>
+                Le texte ci-dessous est prêt — modifie-le librement (colle le tien si tu veux),
+                puis clique « 💾 Sauvegarder mon texte » et enregistre ta voix.
+            </div>
+
+            <label style="margin-top:0.5rem;">Ton texte d'intro (modifiable librement)</label>
+            <textarea id="introTextarea" placeholder="Clique sur 'Générer le texte' puis modifie si besoin..."></textarea>
+            <div class="row" style="margin-top:0.6rem; align-items:center;">
+                <button class="btn btn-secondary" onclick="sauvegarderTexte()">💾 Sauvegarder mon texte</button>
+                <div id="texteStatus" class="mini" style="margin-left:0.6rem; color:#60a5fa;">Le texte collé/modifié est gardé pour ton enregistrement.</div>
+            </div>
+        </div>
+
+        <!-- ===== Enregistrement ===== -->
+        <div class="card">
+            <h3>2️⃣ Enregistrer ta voix</h3>
+
+            <label>Sélectionne ta carte son / micro</label>
+            <select id="deviceSelect">
+                <option value="">— micro par défaut du système —</option>
+            </select>
+            <div id="micStatus" class="mini" style="margin-bottom:0.5rem;"></div>
+
+            <!-- Indicateur DB -->
+            <div class="meter-container">
+                <div class="meter-label"><span>Niveau du signal</span><span id="dbZoneText">— dB</span></div>
+                <div class="meter-track">
+                    <div class="meter-fill" id="meterFill"></div>
+                    <div class="meter-peak" id="meterPeak" style="left:50%;"></div>
+                </div>
+                <div class="meter-readout">
+                    <span class="db" id="dbValue">-∞ dB</span>
+                    <span class="state" id="dbState">Micro inactif — clique "Autoriser micro"</span>
+                </div>
+            </div>
+
+            <div class="row" style="margin-top:1rem; align-items:center;">
+                <div style="flex:0 0 auto; min-width:0;">
+                    <button class="btn btn-success" id="btnAutoriser" onclick="autoriserMicro()">Autoriser le micro</button>
+                    <button class="btn btn-danger hidden" id="btnRec" onclick="demarrerRec()"><span class="mic-waves">●</span> Enregistrer</button>
+                    <button class="btn btn-secondary hidden" id="btnStop" onclick="arreterRec()">■ Arrêter</button>
+                </div>
+                <div style="flex:1; min-width:0;">
+                    <div class="timeline"><div class="timeline-bar" id="recTimeline"></div></div>
+                    <div class="mini" id="recTime" style="margin-top:0.3rem;">0.0 s</div>
+                </div>
+            </div>
+
+            <!-- Lecture + sauvegarde -->
+            <div id="recResult" class="hidden" style="margin-top:1rem; border-top:1px solid #334155; padding-top:1rem;">
+                <label>Écoute ton enregistrement</label>
+                <audio id="recAudio" controls style="width:100%; margin-bottom:0.6rem;"></audio>
+                <label>Nom du projet (optionnel — pour le lier à une vidéo précise)</label>
+                <div class="row">
+                    <div><input type="text" id="projetInput" placeholder="Ex: benediction_matinale_protection (laisse vide = intro générique)"></div>
+                    <div style="flex:0 0 auto; min-width:0;">
+                        <button class="btn btn-primary" onclick="sauvegarderIntro()">💾 Sauvegarder l'intro</button>
+                    </div>
+                </div>
+                <div id="saveStatus" class="mini" style="margin-top:0.4rem;"></div>
+            </div>
+        </div>
+
+        <!-- ===== Enregistrements ===== -->
+        <div class="card">
+            <h3>📁 Mes enregistrements</h3>
+            <div id="enregistrementsList"><span class="mini">Chargement...</span></div>
+        </div>
+
+        <!-- ===== Explication flux ===== -->
+        <div class="card">
+            <h3>🔄 Comment ça fonctionne</h3>
+            <div class="mini" style="line-height:1.8;">
+                1. Active la touche humaine ci-dessus et choisis le mode.<br>
+                2. <strong>Mode IA</strong> : dans <a href="/automation" style="color:#60a5fa;">Automation</a>, le système génère ton texte d'intro à lire. <strong>Mode libre</strong> : aucune intro IA, tu improvises.<br>
+                3. Reviens ici, lis le texte (mode IA), enregistre ta voix librement au micro.<br>
+                4. Sauvegarde l'enregistrement (optionnellement lié au projet).<br>
+                5. Le pipeline ajoute automatiquement ton intro en début de vidéo (ou la vidéo commence directement par la prière si rien n'est enregistré) — le reste se fait tout seul.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let audioContext = null;
+        let mediaStream = null;
+        let analyser = null;
+        let dataArray = null;
+        let rafId = null;
+        let mediaRecorder = null;
+        let chunks = [];
+        let recBlob = null;
+        let recTimer = null;
+        let recStart = 0;
+        let dernierBlobURL = null;
+        let actif = false;
+        let modeIntro = 'ia';
+
+        // ===== Status au chargement =====
+        document.addEventListener('DOMContentLoaded', async () => {
+            await chargerStatut();
+            await chargerAppareils();
+            await chargerEnregistrements();
+        });
+
+        // Mise a jour de l'interface selon le mode (ia / libre)
+        function appliquerMode() {
+            const select = document.getElementById('modeSelect');
+            if (select) select.value = modeIntro;
+            const help = document.getElementById('modeHelp');
+            const cardGen = document.getElementById('cardGen');
+            if (modeIntro === 'libre') {
+                if (help) help.textContent = 'Mode libre : aucune intro IA. Enregistre librement ta voix (improvise), la vidéo commence directement par la prière.';
+                if (cardGen) cardGen.classList.add('hidden');
+            } else {
+                if (help) help.textContent = 'Mode IA : le pipeline génère un texte d\'intro que tu lis au micro.';
+                if (cardGen) cardGen.classList.remove('hidden');
+            }
+        }
+
+        // Enregistre le mode choisi (ia / libre)
+        async function changerMode() {
+            const nouveau = document.getElementById('modeSelect').value;
+            modeIntro = nouveau;
+            appliquerMode();
+            try {
+                await fetch('/api/human-touch/mode', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({mode: nouveau})
+                });
+            } catch(err) {}
+        }
+
+        async function chargerStatut() {
+            try {
+                const r = await fetch('/api/human-touch/statut');
+                const st = await r.json();
+                actif = !!st.actif;
+                modeIntro = st.mode || 'ia';
+                document.getElementById('toggleActif').checked = actif;
+                const badge = document.getElementById('badgeActif');
+                badge.textContent = actif ? 'ACTIF' : 'DÉSACTIVÉ';
+                badge.className = 'badge ' + (actif ? 'badge-on' : 'badge-off');
+                document.getElementById('dureeInput').value = st.duree_intro_secondes || 30;
+                appliquerMode();
+
+                // Pipeline en attente de la voix -> pre-remplir le texte et le projet
+                const attente = (st.textes_en_attente || [])[0];
+                if (attente && attente.texte && !document.getElementById('projetInput').value) {
+                    document.getElementById('projetInput').value = attente.projet || '';
+                    document.getElementById('introTextarea').value = attente.texte;
+                    const notice = document.getElementById('pendingNotice');
+                    document.getElementById('pendingProjet').textContent = attente.projet || '?';
+                    notice.classList.remove('hidden');
+                    document.getElementById('genStatus').textContent = 'Texte généré par le pipeline — modifie si besoin puis enregistre.';
+                }
+            } catch(e) {}
+        }
+
+        // ===== Sauvegarde du texte colle/modifie (sans enregistrer l'audio) =====
+        async function sauvegarderTexte() {
+            const projet = document.getElementById('projetInput').value.trim();
+            const texte = document.getElementById('introTextarea').value;
+            if (!projet) {
+                document.getElementById('texteStatus').textContent = 'Entre un nom de projet d\'abord (ex: nom_du_projet).';
+                document.getElementById('texteStatus').style.color = '#f87171';
+                return;
+            }
+            if (!texte.trim()) {
+                document.getElementById('texteStatus').textContent = 'Le texte est vide.';
+                document.getElementById('texteStatus').style.color = '#f87171';
+                return;
+            }
+            document.getElementById('texteStatus').textContent = 'Sauvegarde...';
+            try {
+                const r = await fetch('/api/human-touch/sauver-texte', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({projet: projet, texte: texte})
+                });
+                const d = await r.json();
+                if (d.ok) {
+                    document.getElementById('texteStatus').textContent = '✅ Texte sauvegardé — lis-le et enregistre ta voix ci-dessous.';
+                    document.getElementById('texteStatus').style.color = '#34d399';
+                } else {
+                    document.getElementById('texteStatus').textContent = '❌ ' + (d.erreur || d.message || 'Erreur');
+                    document.getElementById('texteStatus').style.color = '#f87171';
+                }
+            } catch(e) {
+                document.getElementById('texteStatus').textContent = '❌ Erreur réseau : ' + e.message;
+                document.getElementById('texteStatus').style.color = '#f87171';
+            }
+        }
+
+        document.getElementById('toggleActif').addEventListener('change', async (e) => {
+            actif = e.target.checked;
+            const badge = document.getElementById('badgeActif');
+            badge.textContent = actif ? 'ACTIF' : 'DÉSACTIVÉ';
+            badge.className = 'badge ' + (actif ? 'badge-on' : 'badge-off');
+            try {
+                await fetch('/api/human-touch/activer', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({actif: actif})
+                });
+            } catch(err) {}
+        });
+
+        // ===== Generation du texte =====
+        async function genererIntro() {
+            const sujet = document.getElementById('sujetInput').value.trim();
+            if (!sujet) { afficherErreur('Entre un sujet de vidéo d\'abord.'); return; }
+            const duree = parseInt(document.getElementById('dureeInput').value) || 30;
+            const projet = document.getElementById('projetInput').value.trim();
+            const btn = document.getElementById('btnGenerer');
+            btn.disabled = true;
+            document.getElementById('genStatus').textContent = projet
+                ? 'Récupération du texte généré par le pipeline...'
+                : 'Génération en cours (Ollama ~30-60s)...';
+            try {
+                const r = await fetch('/api/human-touch/generer-intro', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({sujet: sujet, profil_id: 'prayer', duree_secondes: duree, projet: projet})
+                });
+                const data = await r.json();
+                if (data.ok) {
+                    document.getElementById('introTextarea').value = data.texte;
+                    document.getElementById('genStatus').textContent = '✅ Texte généré — modifie-le librement puis enregistre ta voix.';
+                } else {
+                    document.getElementById('genStatus').textContent = 'Erreur : ' + (data.erreur || '?');
+                }
+            } catch(e) {
+                document.getElementById('genStatus').textContent = 'Erreur réseau : ' + e.message;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // ===== Appareils (cartes sons) =====
+        async function chargerAppareils() {
+            try {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const inputs = devices.filter(d => d.kind === 'audioinput');
+                const sel = document.getElementById('deviceSelect');
+                sel.innerHTML = '';
+                inputs.forEach((d, i) => {
+                    const opt = document.createElement('option');
+                    opt.value = d.deviceId;
+                    opt.textContent = d.label || ('Micro ' + (i + 1));
+                    sel.appendChild(opt);
+                });
+            } catch(e) {}
+        }
+
+        // ===== Micro / DB meter =====
+        async function autoriserMicro() {
+            try {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    afficherErreur('getUserMedia non supporté par ce navigateur. Utilise Chrome ou Edge.');
+                    return;
+                }
+                const deviceId = document.getElementById('deviceSelect').value;
+                const constraints = { audio: deviceId ? {deviceId: {exact: deviceId}} : true };
+                mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+                await chargerAppareils();  // rafraichit les labels des cartes sons
+
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioContext.createMediaStreamSource(mediaStream);
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 512;
+                analyser.smoothingTimeConstant = 0.6;
+                source.connect(analyser);
+                dataArray = new Uint8Array(analyser.fftSize);
+
+                document.getElementById('btnAutoriser').classList.add('hidden');
+                document.getElementById('btnRec').classList.remove('hidden');
+                document.getElementById('dbState').textContent = 'Micro actif — prêt. Niveau cible : entre -18 et -6 dB.';
+                document.getElementById('micStatus').textContent = '✅ Micro connecté : ' + (deviceId ? 'appareil sélectionné' : 'défaut');
+
+                mettreAJourMeter();
+            } catch(e) {
+                afficherErreur('Accès au micro refusé : ' + e.message + '. Autorise le micro dans le navigateur.');
+            }
+        }
+
+        function metreVersDb(valeur) {
+            // convertir la valeur byte (0-255) en float [-1,1]
+            const v = (valeur - 128) / 128;
+            const rms = v * v;
+            if (rms <= 0.000001) return -60;
+            return Math.max(-60, 20 * Math.log10(Math.sqrt(rms)));
+        }
+
+        function mettreAJourMeter() {
+            if (!analyser || !dataArray) return;
+            analyser.getByteTimeDomainData(dataArray);
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                const v = (dataArray[i] - 128) / 128;
+                sum += v * v;
+            }
+            const rms = Math.sqrt(sum / dataArray.length);
+            const db = rms <= 0.00001 ? -60 : Math.max(-60, 20 * Math.log10(rms));
+
+            // Position de la jauge: -60 a 0 dB
+            const pct = Math.min(100, Math.max(0, ((db + 60) / 60) * 100));
+            document.getElementById('meterFill').style.width = pct + '%';
+            document.getElementById('meterPeak').style.left = pct + '%';
+            document.getElementById('dbValue').textContent = (db <= -60 ? '-∞' : db.toFixed(1)) + ' dB';
+
+            // Etat selon le niveau
+            const stateEl = document.getElementById('dbState');
+            if (db < -30) {
+                stateEl.textContent = '🔇 Trop faible — rapproche-toi du micro / monte le gain';
+                stateEl.className = 'state zone-fort';
+            } else if (db < -18) {
+                stateEl.textContent = '🔉 Faible — augmente le niveau du micro';
+                stateEl.className = 'state zone-faible';
+            } else if (db < -6) {
+                stateEl.textContent = '✅ Bon niveau — parle naturellement';
+                stateEl.className = 'state zone-ok';
+            } else {
+                stateEl.textContent = '🔊 Trop fort — risque de saturation, baisse le gain';
+                stateEl.className = 'state zone-fort';
+            }
+            document.getElementById('dbZoneText').textContent = (db <= -60 ? '-∞' : db.toFixed(0)) + ' dB';
+
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                const duree = (Date.now() - recStart) / 1000;
+                const maxDuree = parseInt(document.getElementById('dureeInput').value) || 30;
+                const pctTimeline = Math.min(100, (duree / maxDuree) * 100);
+                document.getElementById('recTimeline').style.width = pctTimeline + '%';
+                document.getElementById('recTime').textContent = duree.toFixed(1) + ' s / ~' + maxDuree + ' s';
+            }
+
+            rafId = requestAnimationFrame(mettreAJourMeter);
+        }
+
+        // ===== Enregistrement =====
+        function choisirMime() {
+            const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+            for (const t of types) {
+                if (window.MediaRecorder && MediaRecorder.isTypeSupported(t)) return t;
+            }
+            return '';
+        }
+
+        function demarrerRec() {
+            if (!mediaStream) return;
+            chunks = [];
+            document.getElementById('recResult').classList.add('hidden');
+            const mime = choisirMime();
+            mediaRecorder = new MediaRecorder(mediaStream, mime ? {mimeType: mime} : undefined);
+            mediaRecorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+            mediaRecorder.onstop = () => {
+                recBlob = new Blob(chunks, {type: mime || 'audio/webm'});
+                const url = URL.createObjectURL(recBlob);
+                if (dernierBlobURL) URL.revokeObjectURL(dernierBlobURL);
+                dernierBlobURL = url;
+                document.getElementById('recAudio').src = url;
+                document.getElementById('recResult').classList.remove('hidden');
+                document.getElementById('saveStatus').textContent = '';
+                if (rafId) cancelAnimationFrame(rafId);
+                rafId = null;
+            };
+            mediaRecorder.start();
+            recStart = Date.now();
+            document.getElementById('btnRec').classList.add('hidden');
+            document.getElementById('btnStop').classList.remove('hidden');
+            document.getElementById('dbState').textContent = (modeIntro === 'libre')
+                ? '🔴 ENREGISTREMENT — improvise librement, tu commenceras directement par la prière...'
+                : '🔴 ENREGISTREMENT en cours — lis le texte ci-dessus...';
+            document.getElementById('recTime').textContent = '0.0 s';
+            document.getElementById('recTimeline').style.width = '0%';
+            document.getElementById('btnStop').classList.add('pulse');
+
+            // Arret auto si on depasse la duree cible + 5s
+            clearInterval(recTimer);
+            recTimer = setInterval(() => {
+                if (mediaRecorder && mediaRecorder.state === 'recording') {
+                    const maxDuree = (parseInt(document.getElementById('dureeInput').value) || 30) + 5;
+                    if ((Date.now() - recStart) / 1000 >= maxDuree) arreterRec();
+                }
+            }, 500);
+        }
+
+        function arreterRec() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                clearInterval(recTimer);
+            }
+            document.getElementById('btnStop').classList.add('hidden');
+            document.getElementById('btnStop').classList.remove('pulse');
+            document.getElementById('btnRec').classList.remove('hidden');
+        }
+
+        // ===== Sauvegarde =====
+        async function sauvegarderIntro() {
+            if (!recBlob) return;
+            const projet = document.getElementById('projetInput').value.trim();
+            const texte = document.getElementById('introTextarea').value;
+            const fd = new FormData();
+            const ext = (recBlob.type.includes('ogg') ? 'ogg' : recBlob.type.includes('mp4') ? 'm4a' : 'webm');
+            fd.append('fichier', recBlob, 'intro.' + ext);
+            fd.append('projet', projet);
+            fd.append('texte', texte);
+            document.getElementById('saveStatus').textContent = 'Envoi de l\'enregistrement...';
+            try {
+                const r = await fetch('/api/human-touch/upload-intro', {method: 'POST', body: fd});
+                const data = await r.json();
+                if (data.ok) {
+                    document.getElementById('saveStatus').textContent = '✅ ' + data.message;
+                    await chargerEnregistrements();
+                } else {
+                    document.getElementById('saveStatus').textContent = '❌ ' + (data.message || data.erreur || 'Erreur');
+                }
+            } catch(e) {
+                document.getElementById('saveStatus').textContent = '❌ Erreur réseau : ' + e.message;
+            }
+        }
+
+        async function chargerEnregistrements() {
+            try {
+                const r = await fetch('/api/human-touch/statut');
+                const st = await r.json();
+                const list = document.getElementById('enregistrementsList');
+                const generiques = st.enregistrements_generiques || [];
+                const projets = st.intros_projets || [];
+                const enAttente = st.textes_en_attente || [];
+                let html = '';
+                if (!generiques.length && !projets.length && !enAttente.length) {
+                    html = '<span class="mini">Aucun enregistrement pour le moment.</span>';
+                }
+                // Textes d'intro generes par le pipeline, a lire et enregistrer
+                if (enAttente.length) {
+                    html += '<div class="mini" style="color:#fbbf24;margin:6px 0 4px;">📝 Textes d\'intro en attente d\'enregistrement :</div>';
+                    enAttente.forEach(t => {
+                        html += `<div class="list-item" style="cursor:pointer;" onclick="chargerTexte('${t.projet}')">
+                            <span>📝 Projet <strong>${t.projet}</strong></span>
+                            <span class="mini" style="color:#60a5fa;">cliquer pour lire le texte ➜</span>
+                        </div>`;
+                    });
+                }
+                generiques.forEach(e => {
+                    html += `<div class="list-item">
+                        <span>🎧 <strong>Intro générique</strong> — ${e.fichier} (${e.taille_kb} Ko)</span>
+                        <a class="mini" style="color:#60a5fa;" href="#" onclick="return false;">${e.modifie_le.slice(0,16)}</a>
+                    </div>`;
+                });
+                projets.forEach(p => {
+                    html += `<div class="list-item">
+                        <span>🎙️ Projet <strong>${p.projet}</strong> — ${p.audio ? 'intro prête' : 'aucun audio'}</span>
+                        <span class="mini">${p.audio ? '✅' : '⚠️'}</span>
+                    </div>`;
+                });
+                list.innerHTML = html;
+            } catch(e) {
+                document.getElementById('enregistrementsList').innerHTML = '<span class="mini">Erreur chargement</span>';
+            }
+        }
+
+        // Charge un texte d'intro genere par le pipeline dans le casier modifiable
+        async function chargerTexte(projet) {
+            try {
+                document.getElementById('projetInput').value = projet;
+                const r = await fetch('/api/human-touch/generer-intro', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({sujet: projet, projet: projet})
+                });
+                const data = await r.json();
+                if (data.ok && data.texte) {
+                    document.getElementById('introTextarea').value = data.texte;
+                    document.getElementById('genStatus').textContent =
+                        '📝 Texte du pipeline chargé pour « ' + projet + ' » — lis-le, modifie si besoin, puis enregistre ta voix.';
+                    // Auto-démarrage de la capture (facultatif) : demande le mic
+                    await chargerAppareils();
+                    return;
+                }
+                document.getElementById('genStatus').textContent = 'Texte introuvable pour ' + projet;
+            } catch(e) {
+                document.getElementById('genStatus').textContent = 'Erreur : ' + e.message;
+            }
+        }
+
+        function afficherErreur(msg) {
+            const el = document.getElementById('error');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+        }
+    </script>
+    <script>
+        // Stats systeme dans la barre du haut (rafraichi toutes les 2s)
+        function majStatsSysteme() {
+            fetch('/api/system/stats').then(function(r){ return r.json(); }).then(function(d){
+                if (d.cpu === undefined) return;
+                document.getElementById('stCpu').textContent = d.cpu;
+                document.getElementById('stRam').textContent = d.ram_pct;
+                var dsk = document.getElementById('stDisk');
+                dsk.textContent = (d.disque_pct !== null && d.disque_pct !== undefined) ? d.disque_pct : '—';
+                document.getElementById('stGpu').textContent = d.gpu_nom || '—';
+            }).catch(function(){});
+        }
+        setInterval(majStatsSysteme, 2000);
+        majStatsSysteme();
+    </script>
+</body>
+</html>

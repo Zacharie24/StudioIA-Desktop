@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudioIA-Next — Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0f172a; color: #e2e8f0;
+            min-height: 100vh;
+        }
+        .navbar {
+            background: #1e293b; padding: 1rem 2rem;
+            display: flex; align-items: center; gap: 2rem;
+            border-bottom: 1px solid #334155;
+        }
+        .navbar h1 { color: #3b82f6; font-size: 1.3rem; }
+        .navbar a {
+            color: #94a3b8; text-decoration: none; font-size: 0.9rem;
+            padding: 0.3rem 0.8rem; border-radius: 4px;
+        }
+        .navbar a:hover { color: #fff; background: #334155; }
+        .navbar a.active { color: #3b82f6; background: #1e3a5f; }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .card {
+            background: #1e293b; border-radius: 8px; padding: 1.5rem;
+            border: 1px solid #334155;
+        }
+        .card h3 { font-size: 0.8rem; text-transform: uppercase; color: #64748b; margin-bottom: 0.5rem; }
+        .card .value { font-size: 1.8rem; font-weight: bold; color: #f1f5f9; }
+        .card .sub { font-size: 0.8rem; color: #94a3b8; margin-top: 0.3rem; }
+
+        .section { margin-bottom: 2rem; }
+        .section h2 { font-size: 1.1rem; color: #94a3b8; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid #334155; }
+
+        .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.8rem; }
+        .status-item {
+            background: #1e293b; border-radius: 6px; padding: 1rem;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .status-item .label { font-size: 0.85rem; color: #94a3b8; }
+        .status-item .badge {
+            font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 4px;
+            font-weight: 600;
+        }
+        .badge-ok { background: #064e3b; color: #34d399; }
+        .badge-warn { background: #451a03; color: #fb923c; }
+        .badge-err { background: #450a0a; color: #f87171; }
+
+        .projet-row {
+            background: #1e293b; border-radius: 6px; padding: 0.8rem 1rem;
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .projet-row .sujet { font-size: 0.9rem; }
+        .projet-row .meta { font-size: 0.8rem; color: #64748b; }
+
+        .suggestions { list-style: none; }
+        .suggestions li {
+            padding: 0.5rem 0.8rem; margin-bottom: 0.3rem;
+            background: #1e293b; border-radius: 4px;
+            font-size: 0.85rem; border-left: 3px solid #f97316;
+        }
+
+        .btn {
+            display: inline-block; padding: 0.5rem 1rem; border-radius: 6px;
+            background: #3b82f6; color: #fff; border: none; cursor: pointer;
+            font-size: 0.85rem; text-decoration: none;
+        }
+        .btn:hover { background: #2563eb; }
+        .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.75rem; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 0.6rem 0.8rem; text-align: left; font-size: 0.85rem; border-bottom: 1px solid #334155; }
+        th { color: #64748b; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; }
+        tr:hover { background: #1e293b; }
+
+        .footer { text-align: center; padding: 2rem; color: #475569; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>StudioIA-Next</h1>
+        <a href="/" class="active">Dashboard</a>
+        <a href="/automation">Automation</a>
+        <a href="/edition">Edition</a>
+        <a href="/youtube">YouTube</a>
+        <a href="/audit">Audit</a>
+        <a href="/human-touch">Touche humaine</a>
+        <a href="/apprentissage">Apprentissage</a>
+        <a href="/config">Configuration</a>
+        <div style="margin-left:auto; display:flex; gap:1.1rem; align-items:center; font-size:0.8rem; color:#94a3b8; white-space:nowrap;" title="Etat du PC">
+            <span>CPU <b id="stCpu" style="color:#e2e8f0;">-</b>%</span>
+            <span>RAM <b id="stRam" style="color:#e2e8f0;">-</b>%</span>
+            <span>DISK <b id="stDisk" style="color:#e2e8f0;">-</b>%</span>
+            <span>GPU <b id="stGpu" style="color:#e2e8f0;">-</b></span>
+        </div>
+    </nav>
+
+    <div class="container">
+        {% if diagnostic %}
+        <div class="cards">
+            <div class="card">
+                <h3>Score Système</h3>
+                <div class="value">{{ diagnostic.score_pct }}%</div>
+                <div class="sub">{{ diagnostic.score }}/{{ diagnostic.score_max }}</div>
+            </div>
+            <div class="card">
+                <h3>Projets</h3>
+                <div class="value">{{ diagnostic.etapes.projets.total }}</div>
+                <div class="sub">{{ diagnostic.etapes.projets.termines }} terminés, {{ diagnostic.etapes.projets.en_cours }} en cours</div>
+            </div>
+            <div class="card">
+                <h3>Corrections</h3>
+                <div class="value">{{ stats_corrections.total_corrections }}</div>
+                <div class="sub">{{ stats_corrections.en_attente }} en attente d'analyse</div>
+            </div>
+            <div class="card">
+                <h3>Profil actif</h3>
+                <div class="value" style="font-size:1.2rem">{{ diagnostic.etapes.profil.nom or 'N/A' }}</div>
+                <div class="sub">{{ diagnostic.etapes.profil.regles or 0 }} règles</div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="section">
+            <h2>État des services</h2>
+            <div class="status-grid">
+                <div class="status-item">
+                    <span class="label">Ollama</span>
+                    {% set ollama = diagnostic.etapes.ollama if diagnostic else None %}
+                    <span class="badge {{ 'badge-ok' if ollama and ollama.ok else 'badge-err' }}">
+                        {{ 'OK' if ollama and ollama.ok else 'HORS LIGNE' }}
+                    </span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Pexels</span>
+                    {% set pexels = diagnostic.etapes.pexels if diagnostic else None %}
+                    <span class="badge {{ 'badge-ok' if pexels and pexels.ok else 'badge-warn' }}">
+                        {{ 'OK' if pexels and pexels.ok else 'NON CONFIGURE' }}
+                    </span>
+                </div>
+                <div class="status-item">
+                    <span class="label">YouTube API</span>
+                    {% set yt = diagnostic.etapes.youtube if diagnostic else None %}
+                    <span class="badge {{ 'badge-ok' if yt and yt.ok else 'badge-warn' }}">
+                        {{ 'OK' if yt and yt.ok else 'NON CONFIGURE' }}
+                    </span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Mode</span>
+                    {% set cfg = diagnostic.etapes.config if diagnostic else None %}
+                    <span class="badge badge-ok">{{ (cfg.mode if cfg else 'local')|upper }}</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Low Resource</span>
+                    <span class="badge {{ 'badge-warn' if cfg and cfg.low_resource else 'badge-ok' }}">
+                        {{ 'OUI' if cfg and cfg.low_resource else 'NON' }}
+                    </span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Mode visuel</span>
+                    <span class="badge badge-ok">{{ cfg.mode_visuel if cfg else 'N/A' }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== CHAINE SOUS SURVEILLANCE ===== -->
+        <div class="section">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h2>📡 Chaîne sous surveillance</h2>
+                <a href="/audit" class="btn btn-sm" style="margin-left:1rem;">Changer de chaîne cible</a>
+            </div>
+            <div id="surveillanceBlock">
+                <p style="color:#64748b; font-size:0.9rem;">Chargement de la surveillance...</p>
+            </div>
+        </div>
+
+        {% if diagnostic and diagnostic.suggestions %}
+        <div class="section">
+            <h2>Suggestions</h2>
+            <ul class="suggestions">
+                {% for s in diagnostic.suggestions %}
+                <li>{{ s }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <div class="section">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h2>Projets récents</h2>
+                <a href="#" class="btn btn-sm" onclick="runDiagnostic()">Rafraîchir le diagnostic</a>
+            </div>
+            {% if projets %}
+            <table>
+                <tr><th>Projet</th><th>Sujet</th><th>Type</th><th>Progression</th><th>Status</th></tr>
+                {% for p in projets %}
+                <tr>
+                    <td>{{ p.nom[:25] }}</td>
+                    <td>{{ p.sujet[:40] }}</td>
+                    <td>{{ p.type }}</td>
+                    <td>{{ p.etapes_terminees }}/{{ p.etapes_total }}</td>
+                    <td>
+                        <span class="badge {{ 'badge-ok' if p.termine else 'badge-warn' }}">
+                            {{ 'Terminé' if p.termine else 'En cours' }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+            {% else %}
+            <p style="color:#64748b;">Aucun projet pour l'instant.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="footer">
+        StudioIA-Next — Mis à jour: {{ now[:19] }}
+    </div>
+
+    <script>
+        async function chargerSurveillance() {
+            const block = document.getElementById('surveillanceBlock');
+            try {
+                const r = await fetch('/api/surveillance/statut');
+                const d = await r.json();
+                if (!d.ok) {
+                    block.innerHTML = `
+                        <div class="card">
+                            <p style="color:#fbbf24; margin-bottom:0.5rem;">⚠️ Aucune chaîne n'est encore sous surveillance.</p>
+                            <p class="sub" style="color:#64748b; font-size:0.85rem;">Sélectionne ta chaîne dans la page <a href="/audit" style="color:#3b82f6;">Audit</a> pour que ses stats (abonnés, vues, vidéos) restent toujours visibles ici.</p>
+                        </div>`;
+                    return;
+                }
+                const ch = d.chaine || {};
+                const dernier = (d.snapshots && d.snapshots[0]) || null;
+                block.innerHTML = `
+                    <div class="card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:1rem;">
+                            <div>
+                                <div style="font-weight:bold; font-size:1.1rem;">${ch.titre || '?'}</div>
+                                <div class="sub" style="color:#64748b; font-size:0.75rem;">Dernier contrôle : ${dernier ? new Date(dernier.date).toLocaleString('fr-FR') : 'jamais'}</div>
+                            </div>
+                            <button class="btn btn-sm" onclick="mettreAJourSurveillance()">Mettre à jour + prédictions</button>
+                        </div>
+                        <div class="cards" style="margin-bottom:0;">
+                            <div class="card"><h3>Abonnés</h3><div class="value" style="font-size:1.5rem;">${formatNombre(ch.abonnes)}</div></div>
+                            <div class="card"><h3>Vues totales</h3><div class="value" style="font-size:1.5rem;">${formatNombre(ch.vues_total)}</div></div>
+                            <div class="card"><h3>Vidéos</h3><div class="value" style="font-size:1.5rem;">${ch.videos_total}</div></div>
+                            <div class="card"><h3>Surveillance</h3><div class="value" style="font-size:1.5rem;">${d.nb_snapshots || 0}</div><div class="sub">points suivis</div></div>
+                        </div>
+                        <div id="surveillanceDetails"></div>
+                    </div>`;
+            } catch(e) {
+                block.innerHTML = `<div class="card"><p style="color:#f87171;">Erreur de chargement : ${e.message}</p></div>`;
+            }
+        }
+
+        async function mettreAJourSurveillance() {
+            const details = document.getElementById('surveillanceDetails');
+            if (!details) return;
+            details.innerHTML = '<p class="sub" style="color:#94a3b8;">Analyse complète en cours (stats + prédictions + avis IA)...</p>';
+            try {
+                const r = await fetch('/api/surveillance');
+                const d = await r.json();
+                if (!d.ok) { details.innerHTML = '<p style="color:#f87171;">' + (d.erreur || 'Erreur') + '</p>'; return; }
+
+                const evo = d.evolution;
+                let evoHtml = '';
+                if (evo) {
+                    evoHtml = `<div class="status-grid" style="margin:0.8rem 0;">
+                        <div class="status-item"><span class="label">Évolution (+${evo.jours} j)</span><span class="badge badge-ok">+${evo.abonnes_gagnes} abonnés</span></div>
+                        <div class="status-item"><span class="label">Vues gagnées</span><span class="badge badge-ok">+${formatNombre(evo.vues_gagnees)}</span></div>
+                        <div class="status-item"><span class="label">Vidéos ajoutées</span><span class="badge badge-ok">+${evo.videos_gagnees}</span></div>
+                    </div>`;
+                }
+
+                const croiss = (d.predictions && d.predictions.croissance) || {};
+                const evalIA = (d.evaluation_ia || {}).texte;
+                details.innerHTML = evoHtml + `
+                    <div class="status-grid" style="margin-bottom:0.5rem;">
+                        <div class="status-item"><span class="label">Vues/jour</span><span class="badge badge-ok">${croiss.vues_par_jour || 0}</span></div>
+                        <div class="status-item"><span class="label">Abonnés/jour</span><span class="badge badge-ok">${croiss.abonnes_par_jour || 0}</span></div>
+                        <div class="status-item"><span class="label">Confiance prédiction</span><span class="badge badge-${d.predictions && d.predictions.confiance === 'bonne' ? 'ok' : 'warn'}">${(d.predictions && d.predictions.confiance) || '-'}</span></div>
+                    </div>
+                    ${evalIA ? `<div class="status-item" style="display:block; margin-top:0.8rem;"><span class="label">Avis IA</span><div style="font-size:0.85rem; color:#cbd5e1; margin-top:0.3rem;">${evalIA.replace(/\n/g, '<br>')}</div></div>` : ''}`;
+            } catch(e) {
+                details.innerHTML = '<p style="color:#f87171;">Erreur : ' + e.message + '</p>';
+            }
+        }
+
+        function formatNombre(n) {
+            n = Number(n || 0);
+            if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
+            if (n >= 1000) return (n/1000).toFixed(1) + 'k';
+            return n;
+        }
+
+        async function runDiagnostic() {
+            const btn = event.target;
+            btn.textContent = 'Analyse en cours...';
+            btn.style.opacity = '0.5';
+            try {
+                const r = await fetch('/diagnostic/run');
+                const data = await r.json();
+                location.reload();
+            } catch(e) {
+                alert('Erreur: ' + e);
+                btn.textContent = 'Rafraîchir';
+                btn.style.opacity = '1';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', chargerSurveillance);
+    </script>
+    <script>
+        // Stats systeme dans la barre du haut (rafraichi toutes les 2s)
+        function majStatsSysteme() {
+            fetch('/api/system/stats').then(function(r){ return r.json(); }).then(function(d){
+                if (d.cpu === undefined) return;
+                document.getElementById('stCpu').textContent = d.cpu;
+                document.getElementById('stRam').textContent = d.ram_pct;
+                var dsk = document.getElementById('stDisk');
+                dsk.textContent = (d.disque_pct !== null && d.disque_pct !== undefined) ? d.disque_pct : '—';
+                document.getElementById('stGpu').textContent = d.gpu_nom || '—';
+            }).catch(function(){});
+        }
+        setInterval(majStatsSysteme, 2000);
+        majStatsSysteme();
+    </script>
+</body>
+</html>

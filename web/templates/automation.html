@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudioIA-Next — Automation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; }
+        .navbar { background: #1e293b; padding: 1rem 2rem; display: flex; align-items: center; gap: 2rem; border-bottom: 1px solid #334155; }
+        .navbar h1 { color: #3b82f6; font-size: 1.3rem; }
+        .navbar a { color: #94a3b8; text-decoration: none; font-size: 0.9rem; padding: 0.3rem 0.8rem; border-radius: 4px; }
+        .navbar a:hover { color: #fff; background: #334155; }
+        .navbar a.active { color: #3b82f6; background: #1e3a5f; }
+
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+
+        .card { background: #1e293b; border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem; border: 1px solid #334155; }
+        .card h3 { color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.5rem; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.8rem; margin-bottom: 1.5rem; }
+        .stat-item { background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center; }
+        .stat-item .value { font-size: 1.5rem; font-weight: bold; }
+        .stat-item .label { font-size: 0.75rem; color: #64748b; margin-top: 0.2rem; }
+
+        .btn { padding: 0.7rem 1.5rem; border-radius: 6px; border: none; cursor: pointer; font-size: 0.9rem; }
+        .btn-primary { background: #3b82f6; color: #fff; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-success { background: #059669; color: #fff; }
+        .btn-success:hover { background: #047857; }
+        .btn-warning { background: #d97706; color: #fff; }
+        .btn-warning:hover { background: #b45309; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .flex-row { display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap; }
+
+        .phase { border-left: 3px solid #334155; padding-left: 1rem; margin-bottom: 1.5rem; }
+        .phase.completed { border-left-color: #34d399; }
+        .phase.active { border-left-color: #3b82f6; }
+        .phase.erreur { border-left-color: #f87171; }
+        .phase h4 { color: #94a3b8; font-size: 0.85rem; margin-bottom: 0.3rem; }
+        .phase p { color: #e2e8f0; font-size: 0.9rem; }
+
+        pre.result { background: #0f172a; padding: 1rem; border-radius: 6px; font-size: 0.8rem; white-space: pre-wrap; color: #cbd5e1; max-height: 400px; overflow-y: auto; }
+
+        .badge { font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 4px; }
+        .badge-ok { background: #064e3b; color: #34d399; }
+        .badge-warn { background: #451a03; color: #fb923c; }
+        .badge-err { background: #450a0a; color: #f87171; }
+
+        .footer { text-align: center; padding: 2rem; color: #475569; font-size: 0.8rem; }
+
+        #spinner { display: none; }
+        #spinner.active { display: inline-block; width: 16px; height: 16px; border: 2px solid #334155; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .switch { position: relative; display: inline-block; width: 40px; height: 22px; }
+        .switch input { display: none; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #334155; border-radius: 22px; transition: 0.3s; }
+        .slider:before { content: ""; position: absolute; height: 16px; width: 16px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: 0.3s; }
+        input:checked + .slider { background: #3b82f6; }
+        input:checked + .slider:before { transform: translateX(18px); }
+
+        /* Barre de progression */
+        .progress-wrap { background: #0f172a; border-radius: 20px; height: 22px; overflow: hidden; position: relative; margin-top: 0.8rem; border: 1px solid #334155; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #34d399); width: 0%; transition: width 0.4s ease; border-radius: 20px; }
+        .progress-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: #fff; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.6); }
+        .step { display: flex; gap: 0.6rem; align-items: center; font-size: 0.82rem; padding: 0.35rem 0; color: #94a3b8; }
+        .step .dot { width: 9px; height: 9px; border-radius: 50%; background: #334155; flex-shrink: 0; }
+        .step.done .dot { background: #34d399; }
+        .step.done { color: #a7f3d0; }
+        .step.active .dot { background: #3b82f6; box-shadow: 0 0 8px #3b82f6; }
+        .step.active { color: #e2e8f0; }
+        .step.err .dot { background: #f87171; }
+        .step.err { color: #fca5a5; }
+        .human-notice { background: #451a03; border: 1px solid #b45309; color: #fdba74; padding: 0.9rem 1rem; border-radius: 6px; margin-top: 0.8rem; font-size: 0.9rem; display: none; }
+        .human-notice a { color: #fb923c; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>StudioIA-Next</h1>
+        <a href="/">Dashboard</a>
+        <a href="/automation" class="active">Automation</a>
+        <a href="/edition">Edition</a>
+        <a href="/youtube">YouTube</a>
+        <a href="/audit">Audit</a>
+        <a href="/human-touch">Touche humaine</a>
+        <a href="/apprentissage">Apprentissage</a>
+        <a href="/config">Configuration</a>
+        <div style="margin-left:auto; display:flex; gap:1.1rem; align-items:center; font-size:0.8rem; color:#94a3b8; white-space:nowrap;" title="Etat du PC">
+            <span>CPU <b id="stCpu" style="color:#e2e8f0;">-</b>%</span>
+            <span>RAM <b id="stRam" style="color:#e2e8f0;">-</b>%</span>
+            <span>DISK <b id="stDisk" style="color:#e2e8f0;">-</b>%</span>
+            <span>GPU <b id="stGpu" style="color:#e2e8f0;">-</b></span>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+            <h2>Mode tout-automatique</h2>
+            <span id="spinner"></span>
+        </div>
+
+        <p style="color:#64748b; margin-bottom:1.5rem; font-size:0.9rem;">
+            Analyse l'etat du systeme, decide du meilleur contenu a produire,
+            genere le script et prepare la video. Le pipeline peut etre execute
+            en preview (analyse seulement) ou en production complete.
+        </p>
+
+        <!-- Controls -->
+        <div class="card">
+            <h3>Controles</h3>
+            <div class="flex-row" style="margin-top:0.8rem;">
+                <button class="btn btn-primary" onclick="runPipeline(false)" id="btnPreview">
+                    Preview (analyser seulement)
+                </button>
+                <button class="btn btn-success" onclick="runPipeline(true)" id="btnFull">
+                    Production complete
+                </button>
+                <label style="display:flex; align-items:center; gap:0.5rem; color:#94a3b8; font-size:0.85rem; margin-left:1rem;">
+                    <span>Forcer regeneration</span>
+                    <label class="switch">
+                        <input type="checkbox" id="forceGen">
+                        <span class="slider"></span>
+                    </label>
+                </label>
+            </div>
+            <div style="margin-top:1rem;">
+                <label for="autoDirectives">📋 Directives (facultatif) — ce que tu veux que l'IA respecte</label>
+                <textarea id="autoDirectives" style="width:100%; min-height:70px; background:#0f172a; border:1px solid #334155; color:#e2e8f0; padding:0.6rem; border-radius:6px; font-size:0.9rem;"
+                    placeholder="Ce que tu veux citer, ce que tu interdis, les noms des commentateurs à citer…
+Exemple :
+- Cite le verset de Psaume 91 : « Car il ordonnera à ses anges de te garder »
+- N'utilise pas d'histoires inventées
+- Cite et prie pour Marie qui a écrit : « Seigneur, guéris ma famille »"></textarea>
+                <div class="mini" style="color:#64748b; font-size:0.8rem; margin-top:0.3rem;">
+                    Appliquees a la generation du texte (citations, interdictions, prieurs a citer).
+                </div>
+            </div>
+            <div id="statusMsg" style="margin-top:0.8rem; font-size:0.85rem; color:#94a3b8;"></div>
+        </div>
+
+        <!-- Barre de progression temps reel -->
+        <div class="card" id="progressCard" style="display:none;">
+            <h3>Progression du pipeline</h3>
+            <div id="progressMessage" style="font-size:0.9rem; color:#e2e8f0; margin-top:0.5rem;">Demarrage...</div>
+            <div class="progress-wrap">
+                <div class="progress-fill" id="progressFill"></div>
+                <div class="progress-label" id="progressLabel">0%</div>
+            </div>
+            <div id="progressDetail" style="font-size:0.8rem; color:#64748b; margin-top:0.4rem;"></div>
+
+            <!-- Alerte touche humaine : on attend l'enregistrement -->
+            <div class="human-notice" id="humanNotice">
+                <strong>Ton action est requise :</strong> <span id="humanNoticeMsg"></span><br>
+                Ouvre la page <a href="/human-touch">Touche humaine</a>, colle ton texte si besoin,
+                enregistre ta voix, puis le pipeline continuera tout seul.
+            </div>
+
+            <div id="stepList" style="margin-top:0.8rem;"></div>
+        </div>
+
+        <!-- Pipeline progress -->
+        <div id="pipelineResult" style="display:none;">
+            <div class="card">
+                <h3>Pipeline</h3>
+                <div id="phases"></div>
+            </div>
+
+            <div class="card" id="videoCard" style="display:none;">
+                <h3>Video generee</h3>
+                <div id="videoContent"></div>
+            </div>
+
+            <div class="card">
+                <h3>Suggestion de contenu</h3>
+                <pre id="suggestionContent" class="result">-</pre>
+            </div>
+
+            <div class="card">
+                <h3>Resultat complet</h3>
+                <pre id="fullResult" class="result">-</pre>
+            </div>
+        </div>
+
+        <!-- Quick stats -->
+        <div class="card">
+            <h3>Etat du systeme</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="value" id="statScore">-</div>
+                    <div class="label">Score diagnostic</div>
+                </div>
+                <div class="stat-item">
+                    <div class="value" id="statProjets">-</div>
+                    <div class="label">Projets</div>
+                </div>
+                <div class="stat-item">
+                    <div class="value" id="statTendances">-</div>
+                    <div class="label">Tendances YouTube</div>
+                </div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="refreshStats()" style="margin-top:0.5rem;">
+                Rafraichir
+            </button>
+        </div>
+    </div>
+
+    <div class="footer">StudioIA-Next — Pipeline automatique</div>
+
+    <script>
+        // Load stats on page load
+        document.addEventListener('DOMContentLoaded', refreshStats);
+
+        async function refreshStats() {
+            try {
+                const r = await fetch('/diagnostic/latest');
+                const diag = await r.json();
+                if (diag.score_pct !== undefined) {
+                    document.getElementById('statScore').textContent = diag.score_pct + '%';
+                }
+                if (diag.etapes && diag.etapes.projets) {
+                    const p = diag.etapes.projets;
+                    document.getElementById('statProjets').textContent = p.total || 0;
+                }
+                const yt = diag.etapes && diag.etapes.youtube;
+                document.getElementById('statTendances').textContent = (yt && yt.ok) ? 'OK' : 'NON CONFIGURE';
+            } catch(e) {}
+        }
+
+        let pollTimer = null;
+
+        async function runPipeline(force_generer) {
+            const btnPreview = document.getElementById('btnPreview');
+            const btnFull = document.getElementById('btnFull');
+            const spinner = document.getElementById('spinner');
+            const statusMsg = document.getElementById('statusMsg');
+
+            btnPreview.disabled = true;
+            btnFull.disabled = true;
+            spinner.classList.add('active');
+            statusMsg.textContent = 'Lancement du pipeline...';
+            statusMsg.style.color = '#94a3b8';
+
+            document.getElementById('pipelineResult').style.display = 'none';
+            document.getElementById('progressCard').style.display = 'block';
+            document.getElementById('progressFill').style.width = '0%';
+            document.getElementById('progressLabel').textContent = '0%';
+
+            try {
+                const params = new URLSearchParams({
+                    force_generer: force_generer ? 'true' : 'false',
+                    force_regenerate: document.getElementById('forceGen').checked ? 'true' : 'false',
+                    directives: document.getElementById('autoDirectives').value.trim() || ''
+                });
+                const r = await fetch('/api/automation/run?' + params.toString());
+                const data = await r.json();
+
+                if (!data.succes && data.erreur) {
+                    statusMsg.textContent = data.erreur;
+                    statusMsg.style.color = '#f87171';
+                    spinner.classList.remove('active');
+                    btnPreview.disabled = false;
+                    btnFull.disabled = false;
+                    document.getElementById('progressCard').style.display = 'none';
+                    return;
+                }
+
+                statusMsg.textContent = 'Pipeline lance — progression en direct ci-dessous.';
+                if (pollTimer) clearInterval(pollTimer);
+                pollTimer = setInterval(pollProgression, 1000);
+                pollProgression();
+            } catch(e) {
+                statusMsg.textContent = 'Erreur: ' + e.message;
+                statusMsg.style.color = '#f87171';
+                spinner.classList.remove('active');
+                btnPreview.disabled = false;
+                btnFull.disabled = false;
+            }
+        }
+
+        async function pollProgression() {
+            try {
+                const r = await fetch('/api/automation/progress');
+                const d = await r.json();
+                if (d.erreur && !d.en_cours) return;
+
+                // Barre
+                document.getElementById('progressFill').style.width = d.pct + '%';
+                document.getElementById('progressLabel').textContent = d.pct + '%';
+                document.getElementById('progressMessage').textContent = d.message || '';
+                document.getElementById('progressDetail').textContent = d.detail || '';
+
+                // Alerte touche humaine
+                const notice = document.getElementById('humanNotice');
+                if (d.attente_humaine) {
+                    notice.style.display = 'block';
+                    document.getElementById('humanNoticeMsg').textContent = d.message || 'Enregistre ta voix.';
+                    notice.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else {
+                    notice.style.display = 'none';
+                }
+
+                // Etapes
+                const stepList = document.getElementById('stepList');
+                stepList.innerHTML = '';
+                (d.etapes || []).forEach(function(e) {
+                    const div = document.createElement('div');
+                    const cls = e.statut === 'termine' ? 'done'
+                        : (e.statut === 'en_cours' ? 'active'
+                        : (e.statut === 'erreur' ? 'err' : ''));
+                    div.className = 'step ' + cls;
+                    div.innerHTML = '<span class="dot"></span><span>' + e.message + '</span>';
+                    stepList.appendChild(div);
+                });
+
+                // Termine ?
+                if (!d.en_cours && d.resultat) {
+                    clearInterval(pollTimer);
+                    document.getElementById('spinner').classList.remove('active');
+                    document.getElementById('btnPreview').disabled = false;
+                    document.getElementById('btnFull').disabled = false;
+                    document.getElementById('statusMsg').textContent = d.erreur ? 'Termine avec erreur' : 'Termine';
+                    document.getElementById('statusMsg').style.color = d.erreur ? '#f87171' : '#34d399';
+                    displayResult(d.resultat, !!d.resultat.projet_creer);
+                }
+            } catch(e) { /* polling: erreur silencieuse */ }
+        }
+
+        function displayResult(data, fullMode) {
+            document.getElementById('pipelineResult').style.display = 'block';
+            document.getElementById('statusMsg').textContent = 'Termine';
+            document.getElementById('statusMsg').style.color = '#34d399';
+
+            // Phases
+            const phasesDiv = document.getElementById('phases');
+            phasesDiv.innerHTML = '';
+
+            const phases = data.phases || {};
+            const phaseOrder = ['diagnostic', 'performances', 'tendances', 'decision', 'production', 'upload'];
+
+            phaseOrder.forEach(key => {
+                const phase = phases[key];
+                if (!phase) return;
+
+                const div = document.createElement('div');
+                const status = data.erreur ? 'erreur' :
+                    (key === 'production' && phase.statut === 'preview') ? '' :
+                    (key === 'upload' && phase.statut === 'non_disponible') ? '' : 'completed';
+
+                div.className = 'phase ' + status;
+
+                const names = {
+                    'diagnostic': 'Analyse systeme',
+                    'performances': 'Performances profil',
+                    'tendances': 'Tendances YouTube',
+                    'decision': 'Decision contenu',
+                    'production': 'Production',
+                    'upload': 'Upload YouTube'
+                };
+
+                let details = '';
+                if (key === 'diagnostic') {
+                    details = 'Score: ' + (phase.score || '?') + '%';
+                } else if (key === 'decision') {
+                    details = phase.sujet || '';
+                } else if (key === 'production') {
+                    details = phase.message || phase.statut || '';
+                    if (phase.projet) details += ' — Projet: ' + phase.projet;
+                } else if (key === 'upload') {
+                    details = phase.message || phase.statut || '';
+                }
+
+                div.innerHTML = '<h4>' + (names[key] || key) + '</h4>' +
+                    (details ? '<p>' + details + '</p>' : '');
+
+                phasesDiv.appendChild(div);
+            });
+
+            // Video generee ?
+            const videoCard = document.getElementById('videoCard');
+            const videoContent = document.getElementById('videoContent');
+            const projet = data.projet_creer || '';
+            if (projet && (data.fichier_video || data.phases && data.phases.video && data.phases.video.fichier)) {
+                const fv = data.fichier_video || (data.phases.video && data.phases.video.fichier);
+                const vUrl = '/api/automation/video?projet=' + encodeURIComponent(projet);
+                const tUrl = '/api/automation/thumbnail?projet=' + encodeURIComponent(projet);
+                let html = '<div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-start;">';
+                html += '<video controls style="max-width:420px;width:100%;border-radius:8px;background:#000;" src="' + vUrl + '"></video>';
+                html += '<div><img src="' + tUrl + '" alt="vignette" style="max-width:200px;border-radius:6px;border:1px solid #333;">';
+                html += '<p style="margin-top:0.5rem;font-size:0.85rem;word-break:break-all;color:#aaa;">' + (fv || '') + '</p></div>';
+                html += '</div>';
+                videoContent.innerHTML = html;
+                videoCard.style.display = 'block';
+            } else {
+                videoCard.style.display = 'none';
+                videoContent.innerHTML = '';
+            }
+
+            // Suggestion
+            if (data.suggestion) {
+                document.getElementById('suggestionContent').textContent =
+                    JSON.stringify(data.suggestion, null, 2);
+            } else {
+                document.getElementById('suggestionContent').textContent = 'Aucune suggestion';
+            }
+
+            // Full result
+            document.getElementById('fullResult').textContent =
+                JSON.stringify(data, null, 2);
+
+            // Scroll to results
+            document.getElementById('pipelineResult').scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+    <script>
+        // Stats systeme dans la barre du haut (rafraichi toutes les 2s)
+        function majStatsSysteme() {
+            fetch('/api/system/stats').then(function(r){ return r.json(); }).then(function(d){
+                if (d.cpu === undefined) return;
+                document.getElementById('stCpu').textContent = d.cpu;
+                document.getElementById('stRam').textContent = d.ram_pct;
+                var dsk = document.getElementById('stDisk');
+                dsk.textContent = (d.disque_pct !== null && d.disque_pct !== undefined) ? d.disque_pct : '—';
+                document.getElementById('stGpu').textContent = d.gpu_nom || '—';
+            }).catch(function(){});
+        }
+        setInterval(majStatsSysteme, 2000);
+        majStatsSysteme();
+    </script>
+</body>
+</html>

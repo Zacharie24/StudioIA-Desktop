@@ -1,0 +1,31 @@
+{
+  "regles_generales": [
+    "Ecrire comme un humain qui parle naturellement",
+    "Phrases courtes et claires, maximum 25 mots par phrase",
+    "Vocabulaire simple et universel",
+    "Pas de repetition de la meme idee dans deux phrases successives",
+    "Structure fluide : introduction, developpement, conclusion",
+    "Chaque paragraphe = une seule idee principale",
+    "Transitions naturelles entre les paragraphes",
+    "Varier le rythme des phrases pour maintenir l'attention"
+  ],
+  "mots_a_eviter": [
+    "intelligence artificielle", "en tant qu'IA", "en tant que modele linguistique",
+    "je suis un programme", "je suis concu pour",
+    "Voici ma", "Je vais te parler",
+    "Nous allons voir", "Aujourd'hui on va"
+  ],
+  "regles_grammaire": [
+    "Verifier les accords sujet-verbe",
+    "Eviter les phrases trop longues (plus de 30 mots)",
+    "Utiliser la voix active de preference"
+  ],
+  "type_contenu": "generique",
+  "structure_script": {
+    "introduction": "Accroche interessante pour capter l'attention des 5 premieres secondes",
+    "problematique": "Presenter le sujet ou la question du jour",
+    "developpement": "Developper avec des exemples concrets, des donnees ou des histoires",
+    "point_cle": "Mettre en avant 1-2 idees fortes faciles a retenir",
+    "conclusion": "Resumer et finir par une question ouverte ou un appel a l'action"
+  }
+}

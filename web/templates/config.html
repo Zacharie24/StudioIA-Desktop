@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudioIA-Next — Configuration</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; }
+        .navbar { background: #1e293b; padding: 1rem 2rem; display: flex; align-items: center; gap: 2rem; border-bottom: 1px solid #334155; }
+        .navbar h1 { color: #3b82f6; font-size: 1.3rem; }
+        .navbar a { color: #94a3b8; text-decoration: none; font-size: 0.9rem; padding: 0.3rem 0.8rem; border-radius: 4px; }
+        .navbar a:hover { color: #fff; background: #334155; }
+        .navbar a.active { color: #3b82f6; background: #1e3a5f; }
+
+        .container { max-width: 800px; margin: 0 auto; padding: 2rem; }
+        .card { background: #1e293b; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid #334155; }
+        .card h3 { color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid #334155; }
+
+        .field { margin-bottom: 1.2rem; }
+        .field label { display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.3rem; }
+        .field input, .field select { width: 100%; padding: 0.6rem; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #fff; font-size: 0.9rem; }
+        .field input:focus, .field select:focus { outline: none; border-color: #3b82f6; }
+        .field .hint { font-size: 0.75rem; color: #64748b; margin-top: 0.2rem; }
+
+        .btn { padding: 0.6rem 1.5rem; background: #3b82f6; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+        .btn:hover { background: #2563eb; }
+        .btn-success { background: #059669; }
+        .btn-success:hover { background: #047857; }
+        .btn-danger { background: #dc2626; }
+        .btn-danger:hover { background: #b91c1c; }
+
+        .flex-row { display: flex; gap: 0.5rem; align-items: center; }
+
+        #saveMsg { opacity: 0; transition: opacity 0.3s; }
+        #saveMsg.show { opacity: 1; }
+
+        .badge { font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 4px; }
+        .badge-ok { background: #064e3b; color: #34d399; }
+        .badge-warn { background: #451a03; color: #fb923c; }
+
+        .footer { text-align: center; padding: 2rem; color: #475569; font-size: 0.8rem; }
+
+        .key-display {
+            font-family: monospace; background: #0f172a; padding: 0.3rem 0.5rem;
+            border-radius: 4px; font-size: 0.8rem; color: #94a3b8;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>StudioIA-Next</h1>
+        <a href="/">Dashboard</a>
+        <a href="/edition">Edition</a>
+        <a href="/youtube">YouTube</a>
+        <a href="/audit">Audit</a>
+        <a href="/human-touch">Touche humaine</a>
+        <a href="/automation">Automation</a>
+        <a href="/apprentissage">Apprentissage</a>
+        <a href="/config" class="active">Configuration</a>
+        <div style="margin-left:auto; display:flex; gap:1.1rem; align-items:center; font-size:0.8rem; color:#94a3b8; white-space:nowrap;" title="Etat du PC">
+            <span>CPU <b id="stCpu" style="color:#e2e8f0;">-</b>%</span>
+            <span>RAM <b id="stRam" style="color:#e2e8f0;">-</b>%</span>
+            <span>DISK <b id="stDisk" style="color:#e2e8f0;">-</b>%</span>
+            <span>GPU <b id="stGpu" style="color:#e2e8f0;">-</b></span>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2 style="margin-bottom:1rem;">Configuration</h2>
+        <p style="color:#64748b; margin-bottom:1.5rem; font-size:0.9rem;">
+            Modifie les parametres du systeme. Les modifications sont appliquees immediatement.
+        </p>
+
+        <form id="configForm">
+            <div class="card">
+                <h3>API Externes</h3>
+
+                <div class="field">
+                    <label>Cle API YouTube</label>
+                    <div class="flex-row">
+                        <input type="text" id="youtube_api_key" placeholder="AIzaSy..." value="{{ config.youtube_api_key or '' }}">
+                        <span id="youtubeStatus" class="badge badge-warn">Non configure</span>
+                    </div>
+                    <div class="hint">
+                        Obtiens une cle sur
+                        <a href="https://console.cloud.google.com/" target="_blank" style="color:#3b82f6;">Google Cloud Console</a>
+                        (YouTube Data API v3, gratuit quota 10k/jour)
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label>Cle API Pexels</label>
+                    <div class="flex-row">
+                        <input type="text" id="pexels_api_key" placeholder="..." value="{{ config.pexels_api_key or '' }}">
+                        <span id="pexelsStatus" class="badge badge-warn">Non configure</span>
+                    </div>
+                    <div class="hint">
+                        Obtiens une cle sur
+                        <a href="https://www.pexels.com/api/" target="_blank" style="color:#3b82f6;">Pexels API</a>
+                        (gratuit, pour les images et videos d'illustration)
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Profil & Mode</h3>
+
+                <div class="field">
+                    <label>Profil actif</label>
+                    <select id="profil_actif">
+                        <option value="prayer" {{ 'selected' if config.profil_actif == 'prayer' else '' }}>Prieres chretiennes</option>
+                        <option value="default" {{ 'selected' if config.profil_actif == 'default' else '' }}>Defaut</option>
+                    </select>
+                    <div class="hint">Le profil determine les regles de redaction et le style de contenu</div>
+                </div>
+
+                <div class="field">
+                    <label>Mode visuel</label>
+                    <select id="mode_visuel">
+                        <option value="intelligent" {{ 'selected' if config.mode_visuel == 'intelligent' else '' }}>Intelligent (auto)</option>
+                        <option value="simple" {{ 'selected' if config.mode_visuel == 'simple' else '' }}>Simple (texte sur fond)</option>
+                        <option value="avance" {{ 'selected' if config.mode_visuel == 'avance' else '' }}>Avance (scenes multiples)</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label>Low Resource Mode</label>
+                    <select id="low_resource">
+                        <option value="true" {{ 'selected' if config.low_resource else '' }}>Active (moins de RAM/VRAM)</option>
+                        <option value="false" {{ 'selected' if not config.low_resource else '' }}>Desactive</option>
+                    </select>
+                    <div class="hint">Limite l'utilisation des ressources pour les machines modestes</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Audio</h3>
+
+                <div class="field">
+                    <label>Moteur TTS</label>
+                    <select id="tts_engine">
+                        <option value="xtts" {{ 'selected' if config.tts_engine == 'xtts' else '' }}>XTTS (local)</option>
+                        <option value="edge" {{ 'selected' if config.tts_engine == 'edge' else '' }}>Edge TTS (en ligne)</option>
+                    </select>
+                </div>
+
+                <div class="field" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem;">
+                    <div>
+                        <label>Volume voix</label>
+                        <input type="number" step="0.05" min="0" max="2" id="voice_volume" value="{{ config.voice_volume or 1.0 }}">
+                    </div>
+                    <div>
+                        <label>Volume musique</label>
+                        <input type="number" step="0.05" min="0" max="2" id="music_volume" value="{{ config.music_volume or 0.25 }}">
+                    </div>
+                    <div>
+                        <label>Reverb</label>
+                        <input type="number" step="0.05" min="0" max="1" id="reverb_level" value="{{ config.reverb_level or 0.3 }}">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Sous-titres</h3>
+                <div class="field" style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                    <div>
+                        <label>Style</label>
+                        <select id="subtitle_style">
+                            <option value="1" {{ 'selected' if config.subtitle_style == '1' else '' }}>Classic</option>
+                            <option value="2" {{ 'selected' if config.subtitle_style == '2' else '' }}>Modern</option>
+                            <option value="3" {{ 'selected' if config.subtitle_style == '3' else '' }}>Minimal</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Taille police</label>
+                        <input type="number" step="0.5" min="8" max="24" id="subtitle_size" value="{{ config.subtitle_size or 12 }}">
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:flex; gap:1rem; align-items:center; margin-top:1rem;">
+                <button type="submit" class="btn btn-success">Enregistrer</button>
+                <span id="saveMsg">Enregistre !</span>
+            </div>
+        </form>
+    </div>
+
+    <div class="footer">StudioIA-Next — Configuration</div>
+
+    <script>
+        // Check API key status on load
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const r = await fetch('/diagnostic/latest');
+                const diag = await r.json();
+                if (diag.etapes) {
+                    const yt = diag.etapes.youtube || {};
+                    const px = diag.etapes.pexels || {};
+
+                    const ytBadge = document.getElementById('youtubeStatus');
+                    if (yt.ok) { ytBadge.textContent = 'OK'; ytBadge.className = 'badge badge-ok'; }
+
+                    const pxBadge = document.getElementById('pexelsStatus');
+                    if (px.ok) { pxBadge.textContent = 'OK'; pxBadge.className = 'badge badge-ok'; }
+                }
+            } catch(e) {}
+        });
+
+        document.getElementById('configForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const config = {
+                youtube_api_key: document.getElementById('youtube_api_key').value,
+                pexels_api_key: document.getElementById('pexels_api_key').value,
+                profil_actif: document.getElementById('profil_actif').value,
+                mode_visuel: document.getElementById('mode_visuel').value,
+                low_resource: document.getElementById('low_resource').value === 'true',
+                tts_engine: document.getElementById('tts_engine').value,
+                voice_volume: parseFloat(document.getElementById('voice_volume').value) || 1.0,
+                music_volume: parseFloat(document.getElementById('music_volume').value) || 0.25,
+                reverb_level: parseFloat(document.getElementById('reverb_level').value) || 0.3,
+                subtitle_style: document.getElementById('subtitle_style').value,
+                subtitle_size: parseFloat(document.getElementById('subtitle_size').value) || 12
+            };
+
+            try {
+                const r = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(config)
+                });
+                const data = await r.json();
+
+                const msg = document.getElementById('saveMsg');
+                if (data.ok) {
+                    msg.textContent = 'Configuration enregistree ! Redemarre le diagnostic...';
+                    msg.style.color = '#34d399';
+                    // Relancer le diagnostic
+                    await fetch('/diagnostic/run');
+                    location.reload();
+                } else {
+                    msg.textContent = 'Erreur: ' + (data.erreur || 'inconnue');
+                    msg.style.color = '#f87171';
+                }
+                msg.classList.add('show');
+                setTimeout(() => msg.classList.remove('show'), 3000);
+            } catch(e) {
+                const msg = document.getElementById('saveMsg');
+                msg.textContent = 'Erreur de connexion: ' + e.message;
+                msg.style.color = '#f87171';
+                msg.classList.add('show');
+            }
+        });
+    </script>
+    <script>
+        // Stats systeme dans la barre du haut (rafraichi toutes les 2s)
+        function majStatsSysteme() {
+            fetch('/api/system/stats').then(function(r){ return r.json(); }).then(function(d){
+                if (d.cpu === undefined) return;
+                document.getElementById('stCpu').textContent = d.cpu;
+                document.getElementById('stRam').textContent = d.ram_pct;
+                var dsk = document.getElementById('stDisk');
+                dsk.textContent = (d.disque_pct !== null && d.disque_pct !== undefined) ? d.disque_pct : '—';
+                document.getElementById('stGpu').textContent = d.gpu_nom || '—';
+            }).catch(function(){});
+        }
+        setInterval(majStatsSysteme, 2000);
+        majStatsSysteme();
+    </script>
+</body>
+</html>

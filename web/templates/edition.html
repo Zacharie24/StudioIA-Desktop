@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudioIA-Next — Edition</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; }
+        .navbar { background: #1e293b; padding: 1rem 2rem; display: flex; align-items: center; gap: 2rem; border-bottom: 1px solid #334155; }
+        .navbar h1 { color: #3b82f6; font-size: 1.3rem; }
+        .navbar a { color: #94a3b8; text-decoration: none; font-size: 0.9rem; padding: 0.3rem 0.8rem; border-radius: 4px; }
+        .navbar a:hover { color: #fff; background: #334155; }
+        .navbar a.active { color: #3b82f6; background: #1e3a5f; }
+
+        .container { max-width: 1000px; margin: 0 auto; padding: 2rem; }
+
+        .card { background: #1e293b; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.2rem; border: 1px solid #334155; }
+        .card h3 { color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.8rem; }
+
+        label { display: block; color: #94a3b8; font-size: 0.82rem; margin: 0.6rem 0 0.25rem; }
+        input[type=text], input[type=number], select, textarea {
+            width: 100%; background: #0f172a; border: 1px solid #334155; color: #e2e8f0;
+            padding: 0.55rem 0.7rem; border-radius: 6px; font-size: 0.9rem;
+        }
+        textarea { min-height: 80px; resize: vertical; }
+
+        .btn { padding: 0.65rem 1.3rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; color: #fff; }
+        .btn-primary { background: #3b82f6; } .btn-primary:hover { background: #2563eb; }
+        .btn-success { background: #10b981; } .btn-success:hover { background: #059669; }
+        .btn-secondary { background: #334155; } .btn-secondary:hover { background: #475569; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
+
+        .row { display: flex; gap: 0.8rem; align-items: flex-end; flex-wrap: wrap; }
+        .row > div { flex: 1; min-width: 0; }
+        .mini { font-size: 0.8rem; color: #64748b; margin-top: 0.4rem; }
+        .hidden { display: none !important; }
+
+        /* Progression */
+        .progress-wrap { background: #0f172a; border-radius: 20px; height: 22px; overflow: hidden; position: relative; margin-top: 0.7rem; border: 1px solid #334155; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #34d399); width: 0%; transition: width 0.4s ease; }
+        .progress-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: #fff; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.6); }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th { color: #94a3b8; text-align: left; padding: 0.5rem; border-bottom: 1px solid #334155; font-weight: 500; }
+        td { padding: 0.5rem; border-bottom: 1px solid #1e293b; }
+        .badge { font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 4px; }
+        .badge-ok { background: #064e3b; color: #34d399; }
+        .badge-warn { background: #451a03; color: #fb923c; }
+        .badge-err { background: #450a0a; color: #f87171; }
+
+        .footer { text-align: center; padding: 2rem; color: #475569; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>StudioIA-Next</h1>
+        <a href="/">Dashboard</a>
+        <a href="/automation">Automation</a>
+        <a href="/edition" class="active">Edition</a>
+        <a href="/youtube">YouTube</a>
+        <a href="/audit">Audit</a>
+        <a href="/human-touch">Touche humaine</a>
+        <a href="/apprentissage">Apprentissage</a>
+        <a href="/config">Configuration</a>
+        <div style="margin-left:auto; display:flex; gap:1.1rem; align-items:center; font-size:0.8rem; color:#94a3b8; white-space:nowrap;" title="Etat du PC">
+            <span>CPU <b id="stCpu" style="color:#e2e8f0;">-</b>%</span>
+            <span>RAM <b id="stRam" style="color:#e2e8f0;">-</b>%</span>
+            <span>DISK <b id="stDisk" style="color:#e2e8f0;">-</b>%</span>
+            <span>GPU <b id="stGpu" style="color:#e2e8f0;">-</b></span>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2 style="margin-bottom:1rem;">✂️ Edition vidéo & Shorts</h2>
+        <p style="color:#64748b; font-size:0.9rem; margin-bottom:1.5rem;">
+            Les fonctions d'édition qui étaient dans l'interface PowerShell sont maintenant dans le web :
+            générateur de Shorts, vignettes, clonage de voix.
+        </p>
+
+        <!-- ===== GENERATEUR SHORTS ===== -->
+        <div class="card">
+            <h3>🎬 Générateur de Shorts</h3>
+            <div class="row">
+                <div style="flex:2;"><label>Sujet central</label>
+                    <input type="text" id="shSujet" placeholder="Ex: La force de la prière du matin"></div>
+                <div style="flex:0 0 auto; min-width:0;"><label>Type</label>
+                    <select id="shType">
+                        <option value="1">Prière chrétienne (FR)</option>
+                        <option value="2">Storytelling (FR)</option>
+                        <option value="3">Storytelling (EN)</option>
+                        <option value="4">Général (FR)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row">
+                <div><label>Durée (s)</label>
+                    <select id="shDuree">
+                        <option value="30">30 s</option>
+                        <option value="60" selected>60 s</option>
+                        <option value="90">90 s</option>
+                    </select>
+                </div>
+                <div><label>Nombre de Shorts</label>
+                    <input type="number" id="shNb" value="3" min="1" max="10">
+                </div>
+                <div><label>Voix TTS</label>
+                    <select id="shVoix"><option value="">Chargement des voix...</option></select>
+                </div>
+                <div style="flex:0 0 auto; min-width:0;">
+                    <button class="btn btn-success" id="btnShorts" onclick="lancerShorts()">Générer les Shorts</button>
+                </div>
+            </div>
+            <div id="shStatus" class="mini"></div>
+
+            <!-- Barre de progression -->
+            <div id="shProgress" class="hidden" style="margin-top:0.8rem;">
+                <div id="shProgMsg" style="font-size:0.85rem; color:#e2e8f0; margin-top:0.4rem;">Demarrage...</div>
+                <div class="progress-wrap">
+                    <div class="progress-fill" id="shProgFill"></div>
+                    <div class="progress-label" id="shProgLabel">0%</div>
+                </div>
+                <div id="shProgDetail" class="mini" style="margin-top:0.3rem;"></div>
+            </div>
+        </div>
+
+        <!-- ===== VIDEO LONGUE (prières complètes) ===== -->
+        <div class="card">
+            <h3>🎥 Vidéo longue — prière complète (durée au choix)</h3>
+            <div class="row">
+                <div style="flex:2;"><label>Sujet / titre de la prière</label>
+                    <input type="text" id="lvSujet" placeholder="Ex: Psaume 91 — Prière de protection, de repos et de guérison"></div>
+                <div style="flex:0 0 auto; min-width:0;"><label>Type</label>
+                    <select id="lvType">
+                        <option value="priere" selected>Prière chrétienne (FR)</option>
+                        <option value="storytelling">Storytelling (FR)</option>
+                        <option value="general">Général (FR)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row">
+                <div><label>Durée (minutes)</label>
+                    <input type="number" id="lvDuree" value="35" min="5" max="180"></div>
+                <div><label>Voix TTS</label>
+                    <select id="lvVoix"><option value="">Chargement des voix...</option></select></div>
+                <div><label>Titre vidéo (optionnel)</label>
+                    <input type="text" id="lvTitre" placeholder="Laisse vide = le sujet est utilisé"></div>
+            </div>
+            <div style="margin-top:0.4rem;">
+                <label>📋 Directives (facultatif) — tout ce que tu veux que l'IA respecte</label>
+                <textarea id="lvDirectives" style="min-height:110px;" placeholder="Ce que tu veux citer, ce que tu interdis, les noms des prieurs à citer…
+Exemple :
+- Cite le verset de Psaume 91 : « Car il ordonnera à ses anges de te garder »
+- N'utilise pas d'histoires inventées, reste sur la Parole
+- Cite et prie pour Marie qui a écrit : « Seigneur, guéris ma famille »"></textarea>
+                <div class="mini">L'IA tient compte de ces directives pour générer le texte : citations à inclure, choses interdites, noms de commentateurs à citer.</div>
+            </div>
+            <div style="margin-top:0.8rem;">
+                <button class="btn btn-success" id="btnLongue" onclick="lancerVideoLongue()">Générer la vidéo longue</button>
+                <span id="lvStatus" class="mini"></span>
+            </div>
+
+            <!-- Barre de progression -->
+            <div id="lvProgress" class="hidden" style="margin-top:0.8rem;">
+                <div id="lvProgMsg" style="font-size:0.85rem; color:#e2e8f0; margin-top:0.4rem;">Demarrage...</div>
+                <div class="progress-wrap">
+                    <div class="progress-fill" id="lvProgFill"></div>
+                    <div class="progress-label" id="lvProgLabel">0%</div>
+                </div>
+                <div id="lvProgDetail" class="mini" style="margin-top:0.3rem;"></div>
+            </div>
+        </div>
+
+        <!-- ===== PROJETS VIDÉOS LONGUES ===== -->
+        <div class="card">
+            <h3>📁 Vidéos longues générées</h3>
+            <button class="btn btn-secondary btn-sm" onclick="chargerProjetsLongues()">Rafraîchir</button>
+            <div id="longuesList" style="margin-top:0.8rem;"><span class="mini">Chargement...</span></div>
+        </div>
+
+        <!-- ===== PROJETS SHORTS ===== -->
+        <div class="card">
+            <h3>📁 Projets Shorts</h3>
+            <button class="btn btn-secondary btn-sm" onclick="chargerProjetsShorts()">Rafraîchir</button>
+            <div id="shortsList" style="margin-top:0.8rem;"><span class="mini">Chargement...</span></div>
+        </div>
+
+        <!-- ===== VIGNETTES ===== -->
+        <div class="card">
+            <h3>🖼️ Générateur de vignettes (thumbnails)</h3>
+            <div class="row">
+                <div style="flex:2;"><label>Titre de la vidéo</label>
+                    <input type="text" id="thTitre" placeholder="Ex: LA PUISSANCE DE LA PRIERE DU MATIN"></div>
+                <div style="flex:0 0 auto; min-width:0;">
+                    <button class="btn btn-primary" id="btnThumb" onclick="genererVignette()">Générer la vignette</button>
+                </div>
+            </div>
+            <div id="thStatus" class="mini"></div>
+            <div id="thResult"></div>
+        </div>
+
+        <!-- ===== CLONAGE DE VOIX ===== -->
+        <div class="card">
+            <h3>🎙️ Clonage de voix</h3>
+            <div class="row">
+                <div><label>Nom de la voix</label>
+                    <input type="text" id="vcNom" placeholder="Ex: Voix clone Henri"></div>
+                <div><label>Description (optionnel)</label>
+                    <input type="text" id="vcDesc" placeholder="Genre, âge, style..."></div>
+                <div style="flex:0 0 auto; min-width:0;"><label>Fichier audio (5-30s)</label>
+                    <input type="file" id="vcFichier" accept=".wav,.mp3,.flac,.m4a,.webm,.ogg"></div>
+                <div style="flex:0 0 auto; min-width:0;">
+                    <button class="btn btn-secondary" id="btnVoix" onclick="clonerVoix()">Cloner la voix</button>
+                </div>
+            </div>
+            <div id="vcStatus" class="mini"></div>
+            <div id="voixListe" style="margin-top:0.8rem;"><span class="mini">Chargement...</span></div>
+        </div>
+    </div>
+
+    <div class="footer">StudioIA-Next — Edition</div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            chargerVoix('shVoix');
+            chargerVoix('lvVoix');
+            chargerProjetsShorts();
+            chargerProjetsLongues();
+            chargerVoixClonees();
+        });
+
+        let shortsPoll = null;
+        let longuePoll = null;
+
+        // ===== Voix TTS (chargées depuis le backend : XTTS + Edge + Piper) =====
+        async function chargerVoix(selectId) {
+            try {
+                const r = await fetch('/api/edition/voix');
+                const d = await r.json();
+                const sel = document.getElementById(selectId);
+                if (!d.voix || d.voix.length === 0) {
+                    sel.innerHTML = '<option value="3">Edge Henri (FR)</option>';
+                    return;
+                }
+                const defaut = d.defaut || '2';
+                sel.innerHTML = '';
+                d.voix.forEach(v => {
+                    const opt = document.createElement('option');
+                    opt.value = v.id;
+                    let label = v.label + ' (' + (v.moteur || '?');
+                    if (v.clone) label += ' — clone';
+                    label += ')';
+                    opt.textContent = label;
+                    sel.appendChild(opt);
+                });
+                // Presélectionne la voix par défaut de la config si elle existe
+                if (d.voix.some(v => String(v.id) === String(defaut))) {
+                    sel.value = String(defaut);
+                }
+            } catch(e) {
+                const sel = document.getElementById(selectId);
+                sel.innerHTML = '<option value="3">Edge Henri (FR)</option>';
+            }
+        }
+
+        // ===== Vidéo longue =====
+        async function lancerVideoLongue() {
+            const sujet = document.getElementById('lvSujet').value.trim();
+            if (!sujet) { document.getElementById('lvStatus').textContent = 'Entre un sujet / titre de prière.'; return; }
+            const btn = document.getElementById('btnLongue');
+            btn.disabled = true;
+            document.getElementById('lvStatus').textContent = 'Lancement...';
+            document.getElementById('lvProgress').classList.remove('hidden');
+
+            const corps = {
+                sujet: sujet,
+                type_contenu: document.getElementById('lvType').value,
+                duree_minutes: document.getElementById('lvDuree').value,
+                voix_choix: document.getElementById('lvVoix').value,
+                directives: document.getElementById('lvDirectives').value.trim() || null,
+                titre: document.getElementById('lvTitre').value.trim() || null
+            };
+            try {
+                const r = await fetch('/api/edition/video-longue', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(corps)
+                });
+                const d = await r.json();
+                if (!d.ok) {
+                    document.getElementById('lvStatus').textContent = '❌ ' + (d.erreur || 'Erreur');
+                    btn.disabled = false;
+                    return;
+                }
+                document.getElementById('lvStatus').textContent = d.message;
+                if (longuePoll) clearInterval(longuePoll);
+                longuePoll = setInterval(pollLongue, 1500);
+                pollLongue();
+            } catch(e) {
+                document.getElementById('lvStatus').textContent = 'Erreur réseau : ' + e.message;
+                btn.disabled = false;
+            }
+        }
+
+        async function pollLongue() {
+            try {
+                const r = await fetch('/api/automation/progress');
+                const d = await r.json();
+                document.getElementById('lvProgFill').style.width = d.pct + '%';
+                document.getElementById('lvProgLabel').textContent = d.pct + '%';
+                document.getElementById('lvProgMsg').textContent = d.message || '';
+                document.getElementById('lvProgDetail').textContent = d.detail || '';
+                if (!d.en_cours) {
+                    clearInterval(longuePoll);
+                    document.getElementById('btnLongue').disabled = false;
+                    document.getElementById('lvStatus').textContent = d.erreur
+                        ? '❌ Terminé avec erreur : ' + d.erreur
+                        : '✅ Génération terminée.';
+                    if (d.resultat && d.resultat.fichier_video) {
+                        document.getElementById('lvStatus').textContent =
+                            '✅ Vidéo générée : ' + d.resultat.fichier_video.split(/[\\/]/).pop();
+                    }
+                    chargerProjetsLongues();
+                }
+            } catch(e) {}
+        }
+
+        async function chargerProjetsLongues() {
+            try {
+                const r = await fetch('/api/edition/video-longue/list');
+                const d = await r.json();
+                const box = document.getElementById('longuesList');
+                if (!d.projets || d.projets.length === 0) {
+                    box.innerHTML = '<span class="mini">Aucune vidéo longue pour le moment.</span>';
+                    return;
+                }
+                let html = '<table><tr><th>Projet</th><th>Sujet</th><th>Durée</th><th>Statut</th><th>Vidéo</th></tr>';
+                d.projets.forEach(p => {
+                    const badge = p.statut === 'termine' ? 'badge-ok' : (p.statut === 'en_cours' || p.statut === 'en_attente' ? 'badge-warn' : 'badge-err');
+                    const nomVideo = p.video ? p.video.split(/[\\/]/).pop() : '-';
+                    html += '<tr><td>' + p.nom + '</td><td>' + (p.sujet || '-').substring(0, 45) +
+                        '</td><td>' + (p.duree_minutes || '-') + ' min</td>' +
+                        '<td><span class="badge ' + badge + '">' + p.statut + '</span></td>' +
+                        '<td>' + nomVideo + '</td></tr>';
+                });
+                box.innerHTML = html + '</table>';
+            } catch(e) {}
+        }
+
+        // ===== Shorts =====
+        async function lancerShorts() {
+            const sujet = document.getElementById('shSujet').value.trim();
+            if (!sujet) { document.getElementById('shStatus').textContent = 'Entre un sujet.'; return; }
+            const btn = document.getElementById('btnShorts');
+            btn.disabled = true;
+            document.getElementById('shStatus').textContent = 'Lancement...';
+            document.getElementById('shProgress').classList.remove('hidden');
+
+            const corps = {
+                sujet: sujet,
+                type_contenu: document.getElementById('shType').value,
+                duree_sec: document.getElementById('shDuree').value,
+                nb_shorts: document.getElementById('shNb').value,
+                voix_choix: document.getElementById('shVoix').value
+            };
+            try {
+                const r = await fetch('/api/edition/shorts', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(corps)
+                });
+                const d = await r.json();
+                if (!d.ok) {
+                    document.getElementById('shStatus').textContent = '❌ ' + (d.erreur || 'Erreur');
+                    btn.disabled = false;
+                    return;
+                }
+                document.getElementById('shStatus').textContent = d.message;
+                if (shortsPoll) clearInterval(shortsPoll);
+                shortsPoll = setInterval(pollShorts, 1500);
+                pollShorts();
+            } catch(e) {
+                document.getElementById('shStatus').textContent = 'Erreur réseau : ' + e.message;
+                btn.disabled = false;
+            }
+        }
+
+        async function pollShorts() {
+            try {
+                const r = await fetch('/api/automation/progress');
+                const d = await r.json();
+                document.getElementById('shProgFill').style.width = d.pct + '%';
+                document.getElementById('shProgLabel').textContent = d.pct + '%';
+                document.getElementById('shProgMsg').textContent = d.message || '';
+                document.getElementById('shProgDetail').textContent = d.detail || '';
+                if (!d.en_cours) {
+                    clearInterval(shortsPoll);
+                    document.getElementById('btnShorts').disabled = false;
+                    document.getElementById('shStatus').textContent = d.erreur
+                        ? '❌ Terminé avec erreur : ' + d.erreur
+                        : '✅ Generation terminée.';
+                    if (d.resultat && d.resultat.ok) {
+                        document.getElementById('shStatus').textContent =
+                            '✅ ' + d.resultat.nb_ok + '/' + d.resultat.nb_total +
+                            ' Shorts générés dans ' + d.resultat.chemin;
+                    }
+                    chargerProjetsShorts();
+                }
+            } catch(e) {}
+        }
+
+        async function chargerProjetsShorts() {
+            try {
+                const r = await fetch('/api/edition/shorts/list');
+                const d = await r.json();
+                const box = document.getElementById('shortsList');
+                if (!d.projets || d.projets.length === 0) {
+                    box.innerHTML = '<span class="mini">Aucun projet Shorts pour le moment.</span>';
+                    return;
+                }
+                let html = '<table><tr><th>Projet</th><th>Sujet</th><th>Shorts</th><th>Statut</th><th>Vidéos</th></tr>';
+                d.projets.forEach(p => {
+                    const badge = p.statut === 'termine' ? 'badge-ok' : 'badge-warn';
+                    html += '<tr><td>' + p.nom + '</td><td>' + (p.sujet || '-').substring(0, 40) +
+                        '</td><td>' + p.nb_videos + '/' + (p.nb_shorts || '?') +
+                        '</td><td><span class="badge ' + badge + '">' + p.statut + '</span></td>' +
+                        '<td>' + (p.videos && p.videos[0] ? p.videos[0].split(/[\\/]/).pop() : '-') + '</td></tr>';
+                });
+                box.innerHTML = html + '</table>';
+            } catch(e) {}
+        }
+
+        // ===== Vignettes =====
+        async function genererVignette() {
+            const titre = document.getElementById('thTitre').value.trim();
+            if (!titre) { document.getElementById('thStatus').textContent = 'Entre un titre.'; return; }
+            const btn = document.getElementById('btnThumb');
+            btn.disabled = true;
+            document.getElementById('thStatus').textContent = 'Génération...';
+            try {
+                const r = await fetch('/api/edition/thumbnail', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({titre: titre})
+                });
+                const d = await r.json();
+                if (d.ok) {
+                    document.getElementById('thStatus').textContent = '✅ ' + d.message;
+                    const img = d.url
+                        ? '<img src="' + d.url + '?t=' + Date.now() + '" style="max-width:280px; margin-top:0.6rem; border-radius:6px;" alt="vignette">'
+                        : '<span class="mini">Vignette générée : ' + d.chemin + '</span>';
+                    document.getElementById('thResult').innerHTML = img;
+                } else {
+                    document.getElementById('thStatus').textContent = '❌ ' + (d.message || d.erreur || 'Erreur');
+                }
+            } catch(e) {
+                document.getElementById('thStatus').textContent = 'Erreur réseau : ' + e.message;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // ===== Clonage de voix =====
+        async function clonerVoix() {
+            const nom = document.getElementById('vcNom').value.trim();
+            const fichier = document.getElementById('vcFichier').files[0];
+            if (!nom) { document.getElementById('vcStatus').textContent = 'Entre un nom de voix.'; return; }
+            if (!fichier) { document.getElementById('vcStatus').textContent = 'Choisis un fichier audio.'; return; }
+            const btn = document.getElementById('btnVoix');
+            btn.disabled = true;
+            document.getElementById('vcStatus').textContent = 'Clonage en cours (peut prendre un moment)...';
+            const fd = new FormData();
+            fd.append('fichier', fichier);
+            fd.append('nom', nom);
+            fd.append('description', document.getElementById('vcDesc').value);
+            try {
+                const r = await fetch('/api/edition/voix-clonee', {method: 'POST', body: fd});
+                const d = await r.json();
+                document.getElementById('vcStatus').textContent = d.ok ? '✅ ' + d.message : '❌ ' + (d.message || d.erreur || 'Erreur');
+                if (d.ok) chargerVoixClonees();
+            } catch(e) {
+                document.getElementById('vcStatus').textContent = 'Erreur réseau : ' + e.message;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function chargerVoixClonees() {
+            try {
+                const r = await fetch('/api/edition/voix-clonees');
+                const d = await r.json();
+                const box = document.getElementById('voixListe');
+                if (!d.voix || d.voix.length === 0) {
+                    box.innerHTML = '<span class="mini">Aucune voix clonée (PyTorch requis).</span>';
+                    return;
+                }
+                box.innerHTML = '<table><tr><th>Nom</th><th>Description</th><th>Durée</th><th>Langue</th></tr>' +
+                    d.voix.map(v =>
+                        '<tr><td>' + v.name + '</td><td>' + (v.description || '-') +
+                        '</td><td>' + Math.round(v.duree_secondes || 0) + 's</td><td>' + (v.langue || '-') + '</td></tr>'
+                    ).join('') + '</table>';
+            } catch(e) {}
+        }
+
+        // ===== Stats systeme (barre du haut) =====
+        function majStatsSysteme() {
+            fetch('/api/system/stats').then(function(r){ return r.json(); }).then(function(d){
+                if (d.cpu === undefined) return;
+                document.getElementById('stCpu').textContent = d.cpu;
+                document.getElementById('stRam').textContent = d.ram_pct;
+                var dsk = document.getElementById('stDisk');
+                dsk.textContent = (d.disque_pct !== null && d.disque_pct !== undefined) ? d.disque_pct : '—';
+                document.getElementById('stGpu').textContent = d.gpu_nom || '—';
+            }).catch(function(){});
+        }
+        setInterval(majStatsSysteme, 2000);
+        majStatsSysteme();
+    </script>
+</body>
+</html>

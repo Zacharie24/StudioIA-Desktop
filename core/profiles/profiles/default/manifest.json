@@ -1,0 +1,21 @@
+{
+  "id": "default",
+  "name": "Profil generique",
+  "description": "Profil par defaut pour tout type de contenu. Sert de base pour creer de nouveaux profils.",
+  "version": "1.0.0",
+  "type": "base",
+  "langue": "fr",
+  "niche": "generique",
+  "date_creation": "2026-07-30",
+  "tags": ["generique", "base", "modele"],
+  "regles_incluses": [
+    "regles_generales"
+  ],
+  "parametres_defaut": {
+    "duree_chapitre_min": 120,
+    "duree_chapitre_max": 600,
+    "nombre_chapitres": 5,
+    "ton": "naturel",
+    "mode_visuel_conseille": "mix"
+  }
+}

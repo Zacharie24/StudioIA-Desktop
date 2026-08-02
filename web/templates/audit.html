@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>StudioIA — Audit de chaîne</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; }
+        .navbar { background: #1e293b; padding: 1rem 2rem; display: flex; align-items: center; gap: 2rem; border-bottom: 1px solid #334155; flex-wrap: wrap; }
+        .navbar h1 { color: #3b82f6; font-size: 1.3rem; }
+        .navbar a { color: #94a3b8; text-decoration: none; font-size: 0.9rem; padding: 0.3rem 0.8rem; border-radius: 4px; }
+        .navbar a:hover { color: #fff; background: #334155; }
+        .navbar a.active { color: #3b82f6; background: #1e3a5f; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+        h2 { margin-bottom: 1rem; font-size: 1.4rem; }
+        p.sub { color: #64748b; margin-bottom: 1.5rem; font-size: 0.9rem; }
+
+        .search-box { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .search-box input { flex: 1; min-width: 200px; padding: 0.7rem; border-radius: 6px; border: 1px solid #334155; background: #1e293b; color: #fff; font-size: 0.95rem; }
+        .search-box input:focus { outline: none; border-color: #3b82f6; }
+        .btn { padding: 0.7rem 1.5rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; color: #fff; }
+        .btn-primary { background: #3b82f6; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-secondary { background: #334155; }
+        .btn-secondary:hover { background: #475569; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .card { background: #1e293b; border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem; border: 1px solid #334155; }
+        .card h3 { color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.8rem; letter-spacing: 0.05em; }
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.8rem; margin-bottom: 1rem; }
+        .stat-item { background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center; }
+        .stat-item .value { font-size: 1.4rem; font-weight: bold; color: #f1f5f9; }
+        .stat-item .label { font-size: 0.75rem; color: #64748b; margin-top: 0.2rem; }
+        .stat-item .sub-value { font-size: 0.8rem; color: #94a3b8; margin-top: 0.3rem; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 0.55rem 0.7rem; text-align: left; font-size: 0.85rem; border-bottom: 1px solid #334155; }
+        th { color: #64748b; font-weight: 600; font-size: 0.72rem; text-transform: uppercase; }
+        tr:hover { background: #0f172a; }
+
+        .badge { font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 600; }
+        .badge-ok { background: #064e3b; color: #34d399; }
+        .badge-warn { background: #451a03; color: #fb923c; }
+        .badge-haute { background: #450a0a; color: #f87171; }
+        .badge-moyenne { background: #451a03; color: #fbbf24; }
+        .badge-info { background: #1e3a5f; color: #60a5fa; }
+
+        .reco-item { display: flex; gap: 0.8rem; padding: 0.7rem 0; border-bottom: 1px solid #1e293b; align-items: flex-start; }
+        .reco-item:last-child { border-bottom: none; }
+        .reco-item .reco-title { font-weight: 600; color: #f1f5f9; font-size: 0.9rem; }
+        .reco-item .reco-detail { color: #94a3b8; font-size: 0.82rem; margin-top: 0.2rem; }
+
+        .tag { display: inline-block; background: #1e3a5f; color: #93c5fd; padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; margin: 0.15rem; }
+        .motif { background: #0f172a; border: 1px solid #334155; padding: 0.5rem 0.8rem; border-radius: 6px; display: inline-block; margin: 0.25rem; }
+        .motif .mot { font-weight: bold; color: #fbbf24; font-size: 0.9rem; }
+        .motif .freq { color: #64748b; font-size: 0.75rem; }
+
+        .error { color: #f87171; padding: 1rem; background: #450a0a; border-radius: 6px; margin-bottom: 1rem; }
+        .loading { color: #94a3b8; text-align: center; padding: 2rem; }
+        .compare-row { display: flex; gap: 1rem; overflow-x: auto; }
+        .compare-card { background: #0f172a; border-radius: 8px; padding: 1.2rem; min-width: 280px; flex: 1; border: 1px solid #334155; }
+        .compare-card.mine { border-color: #3b82f6; }
+        .compare-card h4 { color: #3b82f6; font-size: 0.95rem; margin-bottom: 0.8rem; }
+        .compare-card .metric { display: flex; justify-content: space-between; padding: 0.3rem 0; font-size: 0.82rem; border-bottom: 1px solid #1e293b; }
+        .compare-card .metric .m-label { color: #64748b; }
+        .compare-card .metric .m-value { color: #f1f5f9; font-weight: 600; }
+
+        .footer { text-align: center; padding: 2rem; color: #475569; font-size: 0.8rem; }
+        .hidden { display: none; }
+        .section-title { color: #3b82f6; font-size: 1.1rem; margin: 1.5rem 0 0.8rem; display: flex; align-items: center; gap: 0.5rem; }
+        .mini { font-size: 0.8rem; color: #64748b; }
+        .bar-wrap { background: #0f172a; border-radius: 4px; height: 8px; overflow: hidden; margin-top: 0.2rem; }
+        .bar { height: 100%; background: #3b82f6; border-radius: 4px; }
+        .bar.green { background: #34d399; }
+        .bar.red { background: #f87171; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>StudioIA-Next</h1>
+        <a href="/">Dashboard</a>
+        <a href="/automation">Automation</a>
+        <a href="/edition">Edition</a>
+        <a href="/youtube">YouTube</a>
+        <a href="/audit" class="active">Audit de chaîne</a>
+        <a href="/apprentissage">Apprentissage</a>
+        <a href="/config">Configuration</a>
+        <div style="margin-left:auto; display:flex; gap:1.1rem; align-items:center; font-size:0.8rem; color:#94a3b8; white-space:nowrap;" title="Etat du PC">
+            <span>CPU <b id="stCpu" style="color:#e2e8f0;">-</b>%</span>
+            <span>RAM <b id="stRam" style="color:#e2e8f0;">-</b>%</span>
+            <span>DISK <b id="stDisk" style="color:#e2e8f0;">-</b>%</span>
+            <span>GPU <b id="stGpu" style="color:#e2e8f0;">-</b></span>
+        </div>
+    </nav>
+    <div class="container">
+        <h2>🎯 Audit de chaîne &amp; analyse comparative</h2>
+        <p class="sub">
+            Audite ta chaîne, découvre ce qui a déjà fonctionné, compare-toi à d'autres chaînes
+            et obtiens des idées concrètes à tester pour améliorer tes performances.
+        </p>
+
+        <div class="card">
+            <h3>Auditer ma chaîne (via OAuth)</h3>
+            <p class="mini" style="margin-bottom:0.8rem;">Optionnel : ajoute des chaînes concurrentes (séparées par des virgules) pour les comparer.</p>
+            <div class="search-box">
+                <input type="text" id="concurrentsInput" placeholder="Chaînes à comparer (ex: JesusFilm, Desiring God, PrayerHub)">
+                <button class="btn btn-primary" id="btnAuditMoi" onclick="auditerMaChaine()">Auditer ma chaîne</button>
+            </div>
+            <div id="auditMoiStatus" class="mini"></div>
+        </div>
+
+        <div class="card">
+            <h3>📡 Chaîne sous surveillance</h3>
+            <p class="mini" style="margin-bottom:0.8rem;">
+                Sélectionne la chaîne que tu veux surveiller (ta chaîne par exemple). Ses stats
+                (abonnés, vues, vidéos) resteront toujours visibles sur le Dashboard et l'IA la
+                vérifie pour savoir comment avancer.
+            </p>
+            <div class="search-box">
+                <input type="text" id="cibleInput" placeholder="Nom, @handle ou ID UC... de ta chaîne" onkeydown="if(event.key==='Enter')mettreSousSurveillance()">
+                <button class="btn btn-primary" id="btnCible" onclick="mettreSousSurveillance()">Mettre sous surveillance</button>
+            </div>
+            <div id="cibleActuelle" class="mini" style="margin-bottom:0.5rem;"></div>
+            <div id="cibleStatus" class="mini"></div>
+        </div>
+
+        <div class="card">
+            <h3>Auditer une autre chaîne</h3>
+            <div class="search-box">
+                <input type="text" id="channelInput" placeholder="Nom ou lien d'une chaîne (ex: JesusFilm)" onkeydown="if(event.key==='Enter')auditerChaine()">
+                <button class="btn btn-secondary" onclick="auditerChaine()">Auditer</button>
+            </div>
+            <div id="auditAutreStatus" class="mini"></div>
+        </div>
+
+        <div id="loading" class="loading hidden">Analyse en cours... (cela peut prendre 30-60 secondes)</div>
+        <div id="error" class="error hidden"></div>
+
+        <!-- ===== RESULTAT AUDIT MA CHAINE ===== -->
+        <div id="resultatMoi" class="hidden">
+            <div class="section-title">📊 Audit de ma chaîne</div>
+
+            <div class="card">
+                <h3>Vue d'ensemble</h3>
+                <div class="stat-grid" id="maChaineStats"></div>
+            </div>
+
+            <div class="card">
+                <h3>Top vidéos (historique — ce qui a déjà marché)</h3>
+                <table>
+                    <thead><tr><th>#</th><th>Vidéo</th><th>Vues</th><th>Likes</th><th>Engagement</th><th>Durée</th></tr></thead>
+                    <tbody id="topVideosMoi"></tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h3>🔑 Patterns gagnants</h3>
+                <div id="patternsMoi" class="mini" style="margin-bottom:0.8rem;"></div>
+                <div id="motifsMoi"></div>
+            </div>
+
+            <div class="card">
+                <h3>💡 Recommandations</h3>
+                <div id="recommandationsMoi"></div>
+            </div>
+
+            <div class="card">
+                <h3>🧪 Idées à tester</h3>
+                <div id="ideesMoi"></div>
+            </div>
+
+            <div class="card">
+                <h3>📈 Prédictions statistiques (en fonction des moyennes actuelles)</h3>
+                <div id="predictionsMoi"></div>
+            </div>
+
+            <div class="card">
+                <h3>📅 Plan de rythme — reproduis ce qui a déjà marché</h3>
+                <div id="planRythmeMoi"></div>
+            </div>
+        </div>
+
+        <!-- ===== COMMENTAIRES YOUTUBE (besoins des prieurs) ===== -->
+        <div class="card" style="margin-top:1rem;">
+            <h3>💬 Commentaires des vidéos — les besoins des prieurs</h3>
+            <p class="mini" style="margin-bottom:0.8rem;">
+                L'analyse lit les commentaires publics de tes vidéos pour comprendre ce qui touche
+                les gens : prières qu'ils font, besoins (guérison, protection, repos...), et les noms
+                à citer dans les prochaines vidéos. Ces résultats alimentent aussi la génération de contenu.
+            </p>
+            <button class="btn btn-primary" id="btnComments" onclick="analyserCommentaires()">Analyser les commentaires</button>
+            <span id="commentsStatus" class="mini" style="margin-left:0.6rem;"></span>
+            <div id="commentsResult" style="margin-top:0.8rem;"><span class="mini">Chargement de la dernière analyse...</span></div>
+        </div>
+
+        <!-- ===== COMPARAISON ===== -->
+        <div id="resultatComparaison" class="hidden">
+            <div class="section-title">⚖️ Comparaison avec d'autres chaînes</div>
+            <div class="card">
+                <div class="compare-row" id="compareRow"></div>
+            </div>
+            <div class="card">
+                <h3>Leurs tops à copier</h3>
+                <div id="topsConcurrents"></div>
+            </div>
+        </div>
+
+        <!-- ===== RESULTAT AUDIT AUTRE CHAINE ===== -->
+        <div id="resultatAutre" class="hidden">
+            <div class="section-title">🔍 Audit de la chaîne sélectionnée</div>
+            <div class="card">
+                <h3>Vue d'ensemble</h3>
+                <div class="stat-grid" id="autreChaineStats"></div>
+            </div>
+            <div class="card">
+                <h3>Recommandations</h3>
+                <div id="recommandationsAutre"></div>
+            </div>
+            <div class="card">
+                <h3>Leurs motifs gagnants</h3>
+                <div id="motifsAutre"></div>
+            </div>
+        </div>
+
+        <!-- ===== APPRENTISSAGE CROISE ===== -->
+        <div class="card" style="margin-top:1rem;">
+            <h3>🧠 Apprentissage croisé (tous les audits sauvegardés)</h3>
+            <div id="apprentissage"></div>
+        </div>
+    </div>
+
+    <div class="footer">StudioIA-Next — Audit de chaîne via YouTube Data API v3</div>
+
+    <script>
+        function afficherErreur(msg) {
+            const el = document.getElementById('error');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+        }
+
+        function formatNumber(n) {
+            n = Number(n || 0);
+            if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
+            if (n >= 1000) return (n/1000).toFixed(1) + 'k';
+            return n;
+        }
+
+        function duree(sec) {
+            if (!sec) return '?';
+            const m = Math.floor(sec / 60), s = sec % 60;
+            return m + 'm' + (s < 10 ? '0' : '') + s;
+        }
+
+        function afficherStats(container, chaine, patterns) {
+            const stats = [
+                { label: 'Abonnés', value: formatNumber(chaine.abonnes) },
+                { label: 'Vues totales', value: formatNumber(chaine.vues_total) },
+                { label: 'Vidéos', value: chaine.videos_total },
+                { label: 'Moy. vues/vidéo', value: formatNumber(patterns.vues_moyennes) },
+                { label: 'Engagement %', value: (patterns.engagement_moyen ?? '-') + '%' },
+                { label: 'Cadence', value: (patterns.cadence_jours ?? '-') + ' j' },
+                { label: 'Durée optimale', value: (patterns.duree_top ?? '-') + ' min' },
+                { label: 'Vidéos analysées', value: patterns.nb_videos }
+            ];
+            container.innerHTML = stats.map(s => `
+                <div class="stat-item">
+                    <div class="value">${s.value}</div>
+                    <div class="label">${s.label}</div>
+                </div>`).join('');
+        }
+
+        function afficherTopVideos(tbody, videos) {
+            tbody.innerHTML = (videos || []).map((v, i) => `
+                <tr>
+                    <td>${i + 1}</td>
+                    <td><a href="https://youtu.be/${v.id}" target="_blank" style="color:#93c5fd;">${v.titre.substring(0, 60)}</a></td>
+                    <td>${formatNumber(v.vues)}</td>
+                    <td>${formatNumber(v.likes)}</td>
+                    <td>${v.engagement}%</td>
+                    <td>${duree(v.duree_secondes)}</td>
+                </tr>`).join('') || '<tr><td colspan="6" class="mini">Aucune vidéo</td></tr>';
+        }
+
+        function afficherMotifs(container, motifs) {
+            if (!motifs || !motifs.length) {
+                container.innerHTML = '<span class="mini">Pas encore de motifs distinctifs (faut plus de vidéos).</span>';
+                return;
+            }
+            container.innerHTML = motifs.map(m => `
+                <div class="motif">
+                    <span class="mot">${m.mot}</span>
+                    <span class="freq"> · top:${m.frequence_top} bas:${m.frequence_bas}</span>
+                </div>`).join('');
+        }
+
+        function afficherRecos(container, recos) {
+            if (!recos || !recos.length) {
+                container.innerHTML = '<span class="mini">Aucune recommandation.</span>';
+                return;
+            }
+            container.innerHTML = recos.map(r => `
+                <div class="reco-item">
+                    <span class="badge badge-${r.priorite === 'haute' ? 'haute' : 'moyenne'}">${r.priorite === 'haute' ? 'HAUTE' : 'MOYENNE'}</span>
+                    <div>
+                        <div class="reco-title">${r.titre}</div>
+                        <div class="reco-detail">${r.detail}</div>
+                    </div>
+                </div>`).join('');
+        }
+
+        function afficherIdees(container, idees) {
+            if (!idees || !idees.length) {
+                container.innerHTML = '<span class="mini">Aucune idée.</span>';
+                return;
+            }
+            container.innerHTML = idees.map(i => `
+                <div class="reco-item">
+                    <span class="badge badge-info">SOURCE: ${i.source}</span>
+                    <div>
+                        <div class="reco-detail">${i.idee}</div>
+                    </div>
+                </div>`).join('');
+        }
+
+        function afficherPredictions(container, pred) {
+            if (!pred) {
+                container.innerHTML = '<span class="mini">Pas encore assez de données pour des prédictions.</span>';
+                return;
+            }
+            const c = pred.croissance || {};
+            const confCls = pred.confiance === 'bonne' ? 'badge-ok' : (pred.confiance === 'moyenne' ? 'badge-moyenne' : 'badge-warn');
+            const rows = (pred.projections || []).map(p => `
+                <tr>
+                    <td>${p.horizon}</td>
+                    <td>${formatNumber(p.abonnes_predits)} <span class="mini">(+${formatNumber(p.abonnes_gagnes)})</span></td>
+                    <td>${formatNumber(p.vues_predites)} <span class="mini">(+${formatNumber(p.vues_gagnees)})</span></td>
+                    <td>${p.videos_predites}</td>
+                </tr>`).join('');
+            const jalons = (pred.jalons || []).map(j =>
+                `<span class="tag">🎯 ${formatNumber(j.palier)} abonnés ≈ ${j.mois} mois</span>`).join('');
+            container.innerHTML = `
+                <div class="stat-grid" style="margin-bottom:0.8rem;">
+                    <div class="stat-item"><div class="value">${c.vues_par_jour || 0}</div><div class="label">Vues / jour</div></div>
+                    <div class="stat-item"><div class="value">${c.abonnes_par_jour || 0}</div><div class="label">Abonnés / jour</div></div>
+                    <div class="stat-item"><div class="value">${c.taux_conversion_estime_pct || 0}%</div><div class="label">Conversion vues→abonnés</div></div>
+                    <div class="stat-item"><div class="value"><span class="badge ${confCls}">${pred.confiance}</span></div><div class="label">Confiance</div></div>
+                </div>
+                <table>
+                    <thead><tr><th>Horizon</th><th>Abonnés (gain)</th><th>Vues (gain)</th><th>Vidéos</th></tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+                ${jalons ? `<div style="margin-top:0.8rem;"><strong class="mini" style="color:#94a3b8;">PROCHAINS PALIERS</strong><div style="margin-top:0.3rem;">${jalons}</div></div>` : ''}`;
+        }
+
+        function afficherPlanRythme(container, plan) {
+            if (!plan) {
+                container.innerHTML = '<span class="mini">Pas encore de plan de rythme disponible.</span>';
+                return;
+            }
+            const prog = (plan.programme_hebdo || []).map(d => `
+                <div class="reco-item">
+                    <span class="badge badge-info">${d.jour}</span>
+                    <div>
+                        <div class="reco-detail">${d.type}</div>
+                        ${d.duree_cible_min ? `<div class="mini">Durée cible : ${d.duree_cible_min} min</div>` : ''}
+                    </div>
+                </div>`).join('');
+            const repro = (plan.a_reproduire || []).map(v => `
+                <div class="reco-item">
+                    <span class="badge badge-ok">${formatNumber(v.vues)} vues</span>
+                    <div>
+                        <div class="reco-title">${(v.titre || '').substring(0, 60)}</div>
+                        <div class="mini">Mots-clés : ${(v.mots_cles || []).map(m => '<span class="tag">' + m + '</span>').join(' ')}</div>
+                    </div>
+                </div>`).join('');
+            container.innerHTML = `
+                <div class="stat-grid" style="margin-bottom:0.8rem;">
+                    <div class="stat-item"><div class="value">${plan.cadence_actuelle_jours || '-'}</div><div class="label">Cadence (jours)</div></div>
+                    <div class="stat-item"><div class="value">${plan.videos_par_semaine || '-'}</div><div class="label">Vidéos / semaine</div></div>
+                    <div class="stat-item"><div class="value">${plan.duree_gagnante_min || '-'}</div><div class="label">Durée gagnante (min)</div></div>
+                    <div class="stat-item"><div class="value">${(plan.objectif_mensuel && plan.objectif_mensuel.videos_par_mois) || '-'}</div><div class="label">Objectif vidéos / mois</div></div>
+                </div>
+                <div style="margin-bottom:0.8rem;"><strong class="mini" style="color:#94a3b8;">📌 CE QUI A MARCHÉ — À REPRODUIRE</strong>${repro}</div>
+                <div><strong class="mini" style="color:#94a3b8;">📅 PROGRAMME HEBDOMADAIRE SUGGÉRÉ</strong>${prog}</div>`;
+        }
+
+        async function mettreSousSurveillance() {
+            const nom = document.getElementById('cibleInput').value.trim();
+            if (!nom) return;
+            const btn = document.getElementById('btnCible');
+            const status = document.getElementById('cibleStatus');
+            status.textContent = 'Recherche de la chaîne...';
+            btn.disabled = true;
+            try {
+                const r = await fetch('/api/surveillance/cible', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({nom: nom})
+                });
+                const d = await r.json();
+                if (!d.ok) {
+                    status.textContent = '❌ ' + (d.erreur || 'Erreur');
+                } else {
+                    status.innerHTML = '✅ Chaîne <strong>' + (d.chaine.titre || nom) + '</strong> mise sous surveillance. Ses stats apparaissent désormais sur le Dashboard.';
+                    document.getElementById('cibleInput').value = '';
+                    chargerCibleActuelle();
+                }
+            } catch(e) {
+                status.textContent = 'Erreur de connexion : ' + e.message;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function chargerCibleActuelle() {
+            const el = document.getElementById('cibleActuelle');
+            try {
+                const r = await fetch('/api/surveillance/statut');
+                const d = await r.json();
+                if (d.ok && d.chaine) {
+                    el.innerHTML = 'Sous surveillance : <strong>' + d.chaine.titre + '</strong> — ' +
+                        formatNumber(d.chaine.abonnes) + ' abonnés · ' +
+                        formatNumber(d.chaine.vues_total) + ' vues · ' +
+                        d.chaine.videos_total + ' vidéos';
+                } else {
+                    el.textContent = '';
+                }
+            } catch(e) {}
+        }
+
+        function afficherComparaison(comparaisons) {
+            const row = document.getElementById('compareRow');
+            if (!comparaisons || !comparaisons.length) {
+                document.getElementById('resultatComparaison').classList.add('hidden');
+                return;
+            }
+            document.getElementById('resultatComparaison').classList.remove('hidden');
+            row.innerHTML = comparaisons.map(c => {
+                const ch = c.chaine || {};
+                const ratio = c.ratio_vues || 0;
+                const bar = Math.min(100, ratio * 20);
+                const color = ratio >= 1 ? 'green' : 'red';
+                return `
+                <div class="compare-card">
+                    <h4>${ch.titre || '?'}</h4>
+                    <div class="metric"><span class="m-label">Abonnés</span><span class="m-value">${formatNumber(ch.abonnes)}</span></div>
+                    <div class="metric"><span class="m-label">Vues/vidéo</span><span class="m-value">${formatNumber(c.vues_moyennes)}</span></div>
+                    <div class="metric"><span class="m-label">Engagement</span><span class="m-value">${c.engagement ?? '-'}%</span></div>
+                    <div class="metric"><span class="m-label">Durée top</span><span class="m-value">${c.duree_top ?? '-'} min</span></div>
+                    <div class="metric"><span class="m-label">Cadence</span><span class="m-value">${c.cadence_jours ?? '-'} j</span></div>
+                    <div class="metric"><span class="m-label">vs ma chaîne</span><span class="m-value" style="color:${ratio >= 1 ? '#34d399' : '#f87171'}">${ratio.toFixed(1)}x</span></div>
+                    <div class="bar-wrap"><div class="bar ${color}" style="width:${bar}%"></div></div>
+                    <div style="margin-top:0.8rem;">
+                        ${(c.motifs_gagnants || []).slice(0, 4).map(m => `<span class="tag">${m.mot}</span>`).join('')}
+                    </div>
+                </div>`;
+            }).join('');
+
+            // Tops des concurrents
+            const tops = document.getElementById('topsConcurrents');
+            tops.innerHTML = comparaisons.map(c => {
+                const ch = c.chaine || {};
+                const vids = (c.top_videos || []).slice(0, 3);
+                return `<div style="margin-bottom:1rem;">
+                    <strong style="color:#93c5fd;">${ch.titre}</strong>
+                    ${vids.map(v => `<div class="mini" style="padding:0.25rem 0;">🎬 ${v.titre.substring(0, 60)} — ${formatNumber(v.vues)} vues</div>`).join('')}
+                </div>`;
+            }).join('');
+        }
+
+        async function auditerMaChaine() {
+            const concurrents = document.getElementById('concurrentsInput').value.trim();
+            document.getElementById('error').classList.add('hidden');
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('resultatMoi').classList.add('hidden');
+            document.getElementById('resultatComparaison').classList.add('hidden');
+            document.getElementById('btnAuditMoi').disabled = true;
+            document.getElementById('auditMoiStatus').textContent = 'Identification de ta chaîne + analyse en cours...';
+
+            try {
+                let url = '/api/audit/ma-chaine';
+                if (concurrents) url += '?concurrents=' + encodeURIComponent(concurrents);
+                const r = await fetch(url);
+                const data = await r.json();
+
+                if (!data.ok) {
+                    afficherErreur(data.erreur || 'Erreur lors de l\'audit');
+                    return;
+                }
+
+                const audit = data.audit || {};
+                document.getElementById('maChaineStats').innerHTML = '';
+                afficherStats(document.getElementById('maChaineStats'), data.ma_chaine || {}, audit.patterns || {});
+                afficherTopVideos(document.getElementById('topVideosMoi'), audit.top_historique || audit.videos || []);
+                afficherMotifs(document.getElementById('motifsMoi'), (audit.patterns || {}).motifs_gagnants);
+                afficherRecos(document.getElementById('recommandationsMoi'), audit.recommandations);
+                afficherIdees(document.getElementById('ideesMoi'), audit.idees_a_tester);
+                afficherPredictions(document.getElementById('predictionsMoi'), data.predictions || audit.predictions);
+                afficherPlanRythme(document.getElementById('planRythmeMoi'), data.plan_rythme || audit.plan_rythme);
+
+                document.getElementById('patternsMoi').textContent =
+                    (audit.patterns && audit.patterns.duree_top ? `⏱️ Durée optimale : ${audit.patterns.duree_top} min` : '') +
+                    (audit.patterns && audit.patterns.cadence_jours ? ` · 📅 Cadence : ${audit.patterns.cadence_jours} jours` : '');
+
+                document.getElementById('resultatMoi').classList.remove('hidden');
+                afficherComparaison(data.comparaisons);
+                chargerApprentissage();
+            } catch(e) {
+                afficherErreur('Erreur de connexion: ' + e.message);
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('btnAuditMoi').disabled = false;
+                document.getElementById('auditMoiStatus').textContent = '';
+            }
+        }
+
+        async function auditerChaine() {
+            const channel = document.getElementById('channelInput').value.trim();
+            if (!channel) return;
+            document.getElementById('error').classList.add('hidden');
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('resultatAutre').classList.add('hidden');
+            document.getElementById('auditAutreStatus').textContent = 'Audit en cours...';
+
+            try {
+                const r = await fetch('/api/audit/chaine?channel=' + encodeURIComponent(channel));
+                const data = await r.json();
+                if (data.erreur) {
+                    afficherErreur(data.erreur);
+                    return;
+                }
+                const audit = data.audit || {};
+                afficherStats(document.getElementById('autreChaineStats'), audit.chaine || {}, audit.patterns || {});
+                afficherRecos(document.getElementById('recommandationsAutre'), audit.recommandations);
+                afficherMotifs(document.getElementById('motifsAutre'), (audit.patterns || {}).motifs_gagnants);
+                document.getElementById('resultatAutre').classList.remove('hidden');
+            } catch(e) {
+                afficherErreur('Erreur de connexion: ' + e.message);
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('auditAutreStatus').textContent = '';
+            }
+        }
+
+        async function chargerApprentissage() {
+            try {
+                const r = await fetch('/api/audit/apprentissage');
+                const data = await r.json();
+                const el = document.getElementById('apprentissage');
+                if (data.erreur) { el.innerHTML = '<span class="mini">' + data.erreur + '</span>'; return; }
+                const themes = (data.themes_gagnants || []).slice(0, 8).map(t =>
+                    `<span class="tag">${t.mot} (${t.frequence})</span>`).join('');
+                const duree = data.duree_gagnante_moyenne ? data.duree_gagnante_moyenne + ' min' : '-';
+                el.innerHTML = `
+                    <div class="stat-grid" style="margin-bottom:0.5rem;">
+                        <div class="stat-item"><div class="value">${data.nb_audits}</div><div class="label">Audits effectués</div></div>
+                        <div class="stat-item"><div class="value">${duree}</div><div class="label">Durée gagnante moy.</div></div>
+                        <div class="stat-item"><div class="value" style="font-size:1rem;">${themes || '—'}</div><div class="label">Thèmes gagnants cumulés</div></div>
+                    </div>`;
+            } catch(e) {}
+        }
+
+        // ===== Commentaires YouTube (besoins des prieurs) =====
+        async function analyserCommentaires() {
+            const btn = document.getElementById('btnComments');
+            const st = document.getElementById('commentsStatus');
+            btn.disabled = true;
+            st.textContent = 'Collecte + analyse en cours (API YouTube, peut prendre ~1 min)...';
+            try {
+                const r = await fetch('/api/comments/analyser');
+                const d = await r.json();
+                if (!d.ok) {
+                    st.textContent = '❌ ' + (d.erreur || 'Echec');
+                } else {
+                    st.textContent = '✅ Analyse terminee — ' + (d.nb_commentaires || 0) + ' commentaires examines.';
+                    afficherCommentaires(d);
+                }
+            } catch(e) {
+                st.textContent = 'Erreur reseau : ' + e.message;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function afficherCommentaires(d) {
+            const box = document.getElementById('commentsResult');
+            const a = d.analyse || {};
+            const besoins = a.besoins || [];
+            const prieres = a.prieres || [];
+            const mots = a.mots_frequents || [];
+            const commentateurs = a.commentateurs_actifs || [];
+            const synthese = d.synthese || {};
+
+            let html = '';
+            if (synthese && synthese.texte) {
+                html += '<div style="background:#1e3a5f; border:1px solid #3b82f6; color:#93c5fd; padding:0.8rem 1rem; border-radius:6px; margin-bottom:0.8rem; font-size:0.88rem; line-height:1.5;">' +
+                    '<strong>🧠 Synthèse IA :</strong> ' + synthese.texte.replace(/\n/g, '<br>') + '</div>';
+            }
+
+            if (besoins.length) {
+                html += '<div style="margin-bottom:0.8rem;"><strong style="color:#94a3b8; font-size:0.8rem;">🕯️ BESOINS EXPRIMÉS (ce qui touche les prieurs) :</strong><div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.4rem;">' +
+                    besoins.map(function(b) {
+                        return '<span style="background:#0f172a; border:1px solid #334155; color:#34d399; padding:0.3rem 0.7rem; border-radius:20px; font-size:0.8rem;">' +
+                            b.theme + ' <b>' + b.nb + '</b></span>';
+                    }).join('') + '</div></div>';
+            }
+
+            if (prieres.length) {
+                html += '<div style="margin-bottom:0.8rem;"><strong style="color:#94a3b8; font-size:0.8rem;">🙏 PRIÈRES ÉCRITES PAR LES SPECTATEURS :</strong><div style="margin-top:0.4rem;">' +
+                    prieres.map(function(p) {
+                        return '<div style="background:#0f172a; border-left:3px solid #10b981; padding:0.5rem 0.8rem; margin-bottom:0.4rem; border-radius:0 6px 6px 0; font-size:0.85rem;">' +
+                            '<span style="color:#34d399; font-weight:600;">' + (p.auteur || '?') + ' :</span> ' +
+                            (p.texte || '').substring(0, 180) + '</div>';
+                    }).join('') + '</div></div>';
+            }
+
+            if (commentateurs.length) {
+                html += '<div style="margin-bottom:0.8rem;"><strong style="color:#94a3b8; font-size:0.8rem;">💬 COMMENTATEURS ACTIFS (à citer dans tes vidéos) :</strong><div style="margin-top:0.4rem;">' +
+                    commentateurs.map(function(c) {
+                        return '<span style="background:#1e3a5f; color:#93c5fd; padding:0.3rem 0.7rem; border-radius:20px; font-size:0.8rem; margin-right:0.4rem; display:inline-block; margin-bottom:0.3rem;">' +
+                            c.nom + ' (' + c.nb_commentaires + ')</span>';
+                    }).join('') + '</div></div>';
+            }
+
+            if (mots.length) {
+                html += '<div><strong style="color:#94a3b8; font-size:0.8rem;">🔑 Mots qui reviennent le plus :</strong><div style="margin-top:0.4rem;">' +
+                    mots.map(function(m) {
+                        return '<span style="background:#0f172a; border:1px solid #334155; color:#e2e8f0; padding:0.25rem 0.6rem; border-radius:20px; font-size:0.78rem; margin-right:0.35rem; display:inline-block; margin-bottom:0.3rem;">' +
+                            m.mot + ' ×' + m.nb + '</span>';
+                    }).join('') + '</div></div>';
+            }
+
+            if (!html) html = '<span class="mini">Analyse vide — aucune donnee exploitable.</span>';
+            box.innerHTML = html;
+        }
+
+        async function chargerDernieresCommentaires() {
+            try {
+                const r = await fetch('/api/comments/dernieres');
+                const d = await r.json();
+                if (d.ok && d.analyse) {
+                    afficherCommentaires(d);
+                } else {
+                    document.getElementById('commentsResult').innerHTML =
+                        '<span class="mini">Aucune analyse pour le moment. Clique « Analyser les commentaires ».</span>';
+                }
+            } catch(e) {}
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            chargerApprentissage();
+            chargerCibleActuelle();
+            chargerDernieresCommentaires();
+        });
+    </script>
+    <script>
+        // Stats systeme dans la barre du haut (rafraichi toutes les 2s)
+        function majStatsSysteme() {
+            fetch('/api/system/stats').then(function(r){ return r.json(); }).then(function(d){
+                if (d.cpu === undefined) return;
+                document.getElementById('stCpu').textContent = d.cpu;
+                document.getElementById('stRam').textContent = d.ram_pct;
+                var dsk = document.getElementById('stDisk');
+                dsk.textContent = (d.disque_pct !== null && d.disque_pct !== undefined) ? d.disque_pct : '—';
+                document.getElementById('stGpu').textContent = d.gpu_nom || '—';
+            }).catch(function(){});
+        }
+        setInterval(majStatsSysteme, 2000);
+        majStatsSysteme();
+    </script>
+</body>
+</html>

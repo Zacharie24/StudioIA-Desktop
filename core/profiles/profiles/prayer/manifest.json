@@ -1,0 +1,29 @@
+{
+  "id": "prayer",
+  "name": "Prières chrétiennes",
+  "description": "Profil pour la création de vidéos de prière, méditation et contenu spirituel chrétien",
+  "version": "1.0.0",
+  "type": "contenu",
+  "langue": "fr",
+  "niche": "spirituel",
+  "auteur": "Zacharie",
+  "date_creation": "2026-07-30",
+  "tags": ["prière", "spirituel", "chrétien", "méditation", "foi"],
+  "regles_incluses": [
+    "regles_generales",
+    "regles_priere",
+    "regles_grammaire",
+    "mots_a_eviter",
+    "mots_de_remplacement",
+    "phrases_interdites_patterns"
+  ],
+  "parametres_defaut": {
+    "duree_chapitre_min": 300,
+    "duree_chapitre_max": 900,
+    "nombre_chapitres": 8,
+    "ton": "chaleureux",
+    "voix_conseillee": "2",
+    "mode_visuel_conseille": "intelligent",
+    "musique_style": "paisible"
+  }
+}

@@ -1,0 +1,36 @@
+# ===== Python =====
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# ===== Secrets =====
+api_keys.json
+secrets.json
+
+# ===== Donnees utilisateur (jamais dans git) =====
+projects/
+data/
+logs/
+temp/
+*.zip
+
+# ===== Binaires / outils (assembles par scripts/build.ps1) =====
+tools/
+ComposIA/
+
+# ===== Runtime & packaging =====
+runtime/
+bundle-models/
+src-tauri/target/
+installer/Output/
+installer/dist/
+*.exe
+
+# ===== Pack XTTS optionnel =====
+xtts/
+
+# ===== Divers / dev =====
+settings.local.json
+*.log
+.DS_Store

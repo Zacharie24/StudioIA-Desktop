@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>StudioIA — Analyse YouTube</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; }
+        .navbar { background: #1e293b; padding: 1rem 2rem; display: flex; align-items: center; gap: 2rem; border-bottom: 1px solid #334155; }
+        .navbar h1 { color: #3b82f6; font-size: 1.3rem; }
+        .navbar a { color: #94a3b8; text-decoration: none; font-size: 0.9rem; padding: 0.3rem 0.8rem; border-radius: 4px; }
+        .navbar a:hover { color: #fff; background: #334155; }
+        .navbar a.active { color: #3b82f6; background: #1e3a5f; }
+        .container { max-width: 1000px; margin: 0 auto; padding: 2rem; }
+        .search-box { display: flex; gap: 0.5rem; margin-bottom: 2rem; }
+        .search-box input { flex: 1; padding: 0.7rem; border-radius: 6px; border: 1px solid #334155; background: #1e293b; color: #fff; font-size: 0.95rem; }
+        .search-box input:focus { outline: none; border-color: #3b82f6; }
+        .search-box button { padding: 0.7rem 1.5rem; background: #3b82f6; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+        .search-box button:hover { background: #2563eb; }
+        .card { background: #1e293b; border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem; border: 1px solid #334155; }
+        .card h3 { color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.5rem; }
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.8rem; margin-bottom: 1rem; }
+        .stat-item { background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center; }
+        .stat-item .value { font-size: 1.5rem; font-weight: bold; color: #f1f5f9; }
+        .stat-item .label { font-size: 0.75rem; color: #64748b; margin-top: 0.2rem; }
+        .stat-item .trend { font-size: 0.8rem; margin-top: 0.3rem; }
+        .trend-up { color: #34d399; }
+        .trend-down { color: #f87171; }
+        .trend-stable { color: #fbbf24; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 0.6rem 0.8rem; text-align: left; font-size: 0.85rem; border-bottom: 1px solid #334155; }
+        th { color: #64748b; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; }
+        tr:hover { background: #0f172a; }
+        .badge { font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 4px; }
+        .badge-ok { background: #064e3b; color: #34d399; }
+        .badge-warn { background: #451a03; color: #fb923c; }
+        .footer { text-align: center; padding: 2rem; color: #475569; font-size: 0.8rem; }
+        .error { color: #f87171; padding: 1rem; background: #450a0a; border-radius: 6px; margin-bottom: 1rem; }
+        .loading { color: #94a3b8; text-align: center; padding: 2rem; }
+        #resultats { display: none; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>StudioIA-Next</h1>
+        <a href="/">Dashboard</a>
+        <a href="/automation">Automation</a>
+        <a href="/edition">Edition</a>
+        <a href="/youtube" class="active">YouTube</a>
+        <a href="/audit">Audit</a>
+        <a href="/human-touch">Touche humaine</a>
+        <a href="/apprentissage">Apprentissage</a>
+        <a href="/config">Configuration</a>
+        <div style="margin-left:auto; display:flex; gap:1.1rem; align-items:center; font-size:0.8rem; color:#94a3b8; white-space:nowrap;" title="Etat du PC">
+            <span>CPU <b id="stCpu" style="color:#e2e8f0;">-</b>%</span>
+            <span>RAM <b id="stRam" style="color:#e2e8f0;">-</b>%</span>
+            <span>DISK <b id="stDisk" style="color:#e2e8f0;">-</b>%</span>
+            <span>GPU <b id="stGpu" style="color:#e2e8f0;">-</b></span>
+        </div>
+    </nav>
+    <div class="container">
+        <h2 style="margin-bottom:1rem;">Analyse YouTube</h2>
+        <p style="color:#64748b; margin-bottom:1.5rem; font-size:0.9rem;">
+            Analyse les performances de n'importe quelle chaîne YouTube.
+            Nécessite une clé API YouTube configurée dans config.json.
+        </p>
+
+        <div class="search-box">
+            <input type="text" id="channelInput" placeholder="Nom de la chaîne YouTube (ex: StudioIA)" onkeydown="if(event.key==='Enter')analyze()">
+            <button onclick="analyze()" id="analyzeBtn">Analyser</button>
+        </div>
+
+        <div id="loading" class="loading" style="display:none;">Analyse en cours...</div>
+        <div id="error" class="error" style="display:none;"></div>
+
+        <div id="resultats">
+            <div class="card">
+                <h3>Chaîne</h3>
+                <h2 id="channelName" style="margin-top:0.3rem;"></h2>
+            </div>
+
+            <div class="stat-grid">
+                <div class="stat-item">
+                    <div class="value" id="statAbonnes">-</div>
+                    <div class="label">Abonnés</div>
+                </div>
+                <div class="stat-item">
+                    <div class="value" id="statVues">-</div>
+                    <div class="label">Vues totales</div>
+                </div>
+                <div class="stat-item">
+                    <div class="value" id="statVideos">-</div>
+                    <div class="label">Vidéos</div>
+                </div>
+                <div class="stat-item">
+                    <div class="value" id="moyVues">-</div>
+                    <div class="label">Moy. vues/vidéo</div>
+                </div>
+                <div class="stat-item">
+                    <div class="value" id="moyEngagement">-</div>
+                    <div class="label">Engagement %</div>
+                </div>
+                <div class="stat-item">
+                    <div class="value" id="tendance">-</div>
+                    <div class="label">Tendance</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Top 10 dernières vidéos</h3>
+                <table>
+                    <thead><tr><th>Titre</th><th>Vues</th><th>Likes</th><th>Commentaires</th><th>Engagement</th></tr></thead>
+                    <tbody id="videosTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top:1rem;">
+            <h3>Configuration requise</h3>
+            <div id="configStatus" style="font-size:0.85rem; color:#94a3b8; margin-top:0.5rem;">
+                <p>Chargement du statut...</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Upload YouTube (OAuth)</h3>
+            <div id="oauthStatus" style="font-size:0.85rem; color:#94a3b8; margin-top:0.5rem;">
+                <p>Chargement...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">StudioIA-Next — Analyse YouTube via API Data v3</div>
+
+    <script>
+        async function analyze() {
+            const channel = document.getElementById('channelInput').value.trim();
+            if (!channel) return;
+
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('resultats').style.display = 'none';
+            document.getElementById('analyzeBtn').disabled = true;
+
+            try {
+                const r = await fetch('/youtube/analyze?channel=' + encodeURIComponent(channel));
+                const data = await r.json();
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('analyzeBtn').disabled = false;
+
+                if (data.erreur) {
+                    document.getElementById('error').textContent = data.erreur;
+                    document.getElementById('error').style.display = 'block';
+                    return;
+                }
+
+                // Afficher les résultats
+                document.getElementById('channelName').textContent = data.chaine.titre;
+                document.getElementById('statAbonnes').textContent = formatNumber(data.chaine.abonnes);
+                document.getElementById('statVues').textContent = formatNumber(data.chaine.vues_total);
+                document.getElementById('statVideos').textContent = data.chaine.videos_total;
+                document.getElementById('moyVues').textContent = formatNumber(data.moyennes.vues);
+                document.getElementById('moyEngagement').textContent = data.moyennes.engagement_pct + '%';
+
+                const tendance = document.getElementById('tendance');
+                const trendMap = {
+                    'hausse': '📈 En hausse',
+                    'baisse': '📉 En baisse',
+                    'stable': '➡️ Stable',
+                    'donnees_insuffisantes': '❓ Insuffisant'
+                };
+                tendance.textContent = trendMap[data.tendance] || data.tendance;
+
+                // Tableau des vidéos
+                const tbody = document.getElementById('videosTable');
+                tbody.innerHTML = '';
+                (data.videos || []).forEach(v => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${v.titre.substring(0, 50)}</td>
+                        <td>${formatNumber(v.vues)}</td>
+                        <td>${formatNumber(v.likes)}</td>
+                        <td>${v.commentaires}</td>
+                        <td>${v.engagement}%</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                document.getElementById('resultats').style.display = 'block';
+
+            } catch(e) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('analyzeBtn').disabled = false;
+                document.getElementById('error').textContent = 'Erreur de connexion: ' + e.message;
+                document.getElementById('error').style.display = 'block';
+            }
+        }
+
+        function formatNumber(n) {
+            if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
+            if (n >= 1000) return (n/1000).toFixed(1) + 'k';
+            return n;
+        }
+
+        // Check config status on load
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const r = await fetch('/diagnostic/latest');
+                const diag = await r.json();
+
+                // API Key status
+                const cfgEl = document.getElementById('configStatus');
+                if (diag.etapes) {
+                    const yt = diag.etapes.youtube || {};
+                    if (yt.ok) {
+                        cfgEl.innerHTML = '<p><span class="badge badge-ok">OK</span> API YouTube configuree</p>';
+                    } else {
+                        cfgEl.innerHTML = `
+                            <p style="margin-bottom:0.5rem;"><span class="badge badge-warn">NON CONFIGURE</span> Le module YouTube fonctionne mais necessite une cle API</p>
+                            <p style="margin-top:0.5rem; font-size:0.8rem;">
+                                1. Va sur <a href="https://console.cloud.google.com/" target="_blank" style="color:#3b82f6;">Google Cloud Console</a><br>
+                                2. Crée un projet → active YouTube Data API v3<br>
+                                3. Crée une clé API (gratuit, quota: 10 000 unités/jour)<br>
+                                4. Ajoute-la via <a href="/config" style="color:#3b82f6;">Configuration</a>
+                            </p>`;
+                    }
+                }
+            } catch(e) {}
+
+            // OAuth status
+            try {
+                const r = await fetch('/api/youtube/auth-status');
+                const oauth = await r.json();
+                const oauthEl = document.getElementById('oauthStatus');
+
+                if (oauth.configured && oauth.token_valide) {
+                    oauthEl.innerHTML = '<p><span class="badge badge-ok">OK</span> OAuth configure — prete a uploader</p>';
+                } else if (oauth.client_secret_present) {
+                    oauthEl.innerHTML = `
+                        <p style="margin-bottom:0.5rem;"><span class="badge badge-warn">TOKEN MANQUANT</span></p>
+                        <p style="font-size:0.8rem;">
+                            Le fichier client_secret.json est present. Lance la console pour generer le token:<br>
+                            <code style="background:#0f172a; padding:0.1rem 0.3rem; border-radius:2px;">python -c "from modules.youtube_analyzer.youtube_upload import auth_flow; auth_flow()"</code>
+                        </p>`;
+                } else {
+                    oauthEl.innerHTML = `
+                        <p style="margin-bottom:0.5rem;"><span class="badge badge-warn">NON CONFIGURE</span></p>
+                        <p style="font-size:0.8rem;">
+                            1. Va sur <a href="https://console.cloud.google.com/" target="_blank" style="color:#3b82f6;">Google Cloud Console</a><br>
+                            2. Active YouTube Data API v3<br>
+                            3. Cree un OAuth 2.0 Client ID (type: Desktop app)<br>
+                            4. Telecharge le JSON et place-le dans:<br>
+                            <code style="background:#0f172a; padding:0.1rem 0.3rem; border-radius:2px;">data/youtube_oauth/client_secret.json</code>
+                        </p>`;
+                }
+            } catch(e) {}
+        });
+    </script>
+    <script>
+        // Stats systeme dans la barre du haut (rafraichi toutes les 2s)
+        function majStatsSysteme() {
+            fetch('/api/system/stats').then(function(r){ return r.json(); }).then(function(d){
+                if (d.cpu === undefined) return;
+                document.getElementById('stCpu').textContent = d.cpu;
+                document.getElementById('stRam').textContent = d.ram_pct;
+                var dsk = document.getElementById('stDisk');
+                dsk.textContent = (d.disque_pct !== null && d.disque_pct !== undefined) ? d.disque_pct : '—';
+                document.getElementById('stGpu').textContent = d.gpu_nom || '—';
+            }).catch(function(){});
+        }
+        setInterval(majStatsSysteme, 2000);
+        majStatsSysteme();
+    </script>
+</body>
+</html>
