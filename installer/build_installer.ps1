@@ -7,7 +7,9 @@
 #                          assets + ComposIA). PAS les modèles IA.
 #   StudioIA-Models.exe  — payload modèles Ollama (qwen2.5:7b + mistral),
 #                          installé dans %USERPROFILE%\StudioIA\.ollama\models
-#                          (créé seulement si .\bundle-models\ est présent).
+#                          MULTI-FICHIER (DiskSpanning, car > 4,2 Go) : le
+#                          .exe et ses .bin de 2 Go max doivent être distribués
+#                          ENSEMBLE (créé seulement si .\bundle-models\ est présent).
 #
 # Prérequis :
 #   * Rust buildé : .\src-tauri\target\release\studioia-shell.exe
@@ -122,12 +124,14 @@ if ($Models) {
 # Rapport
 # ---------------------------------------------------------------------------
 Write-Host "`n=== Récapitulatif ===" -ForegroundColor Green
-Get-ChildItem "$root\installer\Output" -Filter *.exe -ErrorAction SilentlyContinue |
+Get-ChildItem "$root\installer\Output" -ErrorAction SilentlyContinue |
+    Where-Object { $_.Extension -in ".exe", ".bin" } |
+    Sort-Object Name |
     ForEach-Object {
         $go = [math]::Round($_.Length / 1GB, 2)
         $mb = [math]::Round($_.Length / 1MB, 1)
-        $limite = if ($go -gt 2.0) { "  ⚠ DÉPASSE 2 Go (limite GitHub)" } else { "" }
-        Write-Host ("  {0}  {1} Mo ({2} Go){3}" -f $_.Name, $mb, $go, $limite)
+        $note = if ($_.Name -match "Models.*\.bin$") { "  (partie DiskSpanning, à garder avec le .exe)" } elseif ($go -gt 2.0) { "  ⚠ DÉPASSE 2 Go (limite GitHub)" } else { "" }
+        Write-Host ("  {0}  {1} Mo ({2} Go){3}" -f $_.Name, $mb, $go, $note)
     }
 Write-Host ""
 Write-Host "Terminé." -ForegroundColor Green

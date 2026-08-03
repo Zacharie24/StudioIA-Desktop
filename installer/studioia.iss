@@ -7,7 +7,9 @@
 ;                          assets + ComposIA) — PAS les modèles IA (~9 Go).
 ;                          Compilé avec : /dMODELS_ONLY=0
 ;   StudioIA-Models.exe  — payload modèles Ollama (qwen2.5:7b + mistral).
-;                          Compilé avec : /dMODELS_ONLY=1
+;                          MULTI-FICHIER (DiskSpanning) : Setup.exe + .bin de
+;                          2 Go max, car Inno ne sait pas créer un Setup.exe
+;                          unique > 4,2 Go. Compilé avec : /dMODELS_ONLY=1
 ;
 ; Les données utilisateur (%USERPROFILE%\StudioIA) vivent HORS du dossier
 ; d'installation : l'app les résout via STUDIOIA_DATA_DIR (posée par le shell
@@ -54,7 +56,20 @@ DisableProgramGroupPage=yes
 OutputDir=..\installer\Output
 OutputBaseFilename={#OutFile}
 SetupIconFile={#SrcDir}..\src-tauri\icons\icon.ico
+; Les poids de modèles (payload Models.exe) sont incompressibles : comprimer
+; ~9 Go avec LZMA2/ultra ferait passer le build de quelques minutes à ~40 min
+; pour un gain de taille nul. Le livrable app garde la compression forte.
+#if MODELS_ONLY == "1"
+Compression=none
+; --- Disques multiples (obligatoire > 4,2 Go) ---------------------------------
+; Inno ne peut pas produire un Setup.exe unique > 4,2 Go. Le bundle (~8,4 Go)
+; est donc découpé en parties de 2 Go max (StudioIA-Models.exe + -1.bin …),
+; compatibles FAT32/USB. Le Setup.exe lit les .bin dans son propre dossier.
+DiskSpanning=yes
+DiskSliceSize=2000000000
+#else
 Compression=lzma2/ultra
+#endif
 SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayIcon={app}\StudioIA.exe
@@ -71,10 +86,11 @@ ArchitecturesInstallIn64BitMode=x64compatible
 [Languages]
 Name: "french"; MessagesFile: "compiler:Languages\French.isl"
 
+; Les modèles sont extraits directement dans %USERPROFILE%\StudioIA\.ollama\models
+; par [Files] ; l'import réel (lancement Ollama + vérification) est fait par l'app
+; au premier démarrage. Aucune tâche n'est donc proposée pour le payload modèles.
 [Tasks]
-#if MODELS_ONLY == "1"
-Name: "importauto"; Description: "Importer les modèles immédiatement"; Flags: unchecked
-#else
+#if MODELS_ONLY == "0"
 Name: "desktopicon"; Description: "Créer un raccourci sur le Bureau"; Flags: unchecked
 Name: "demarrerapp"; Description: "Lancer StudioIA après l'installation"
 #endif
@@ -126,7 +142,7 @@ Source: "{#SrcDir}..\src-tauri\icons\icon.ico"; DestDir: "{app}"; Flags: ignorev
 ; Le payload est un miroir d'un dossier OLLAMA_MODELS (manifests + blobs).
 ; Il est installé dans les DONNÉES UTILISATEUR : %USERPROFILE%\StudioIA\.ollama\models
 ; (exactement le chemin que core/services.py attend, via STUDIOIA_DATA_DIR).
-Source: "{#SrcDir}..\bundle-models\*"; DestDir: "{userprofile}\StudioIA\.ollama\models"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#SrcDir}..\bundle-models\*"; DestDir: "{%USERPROFILE}\StudioIA\.ollama\models"; Flags: ignoreversion recursesubdirs createallsubdirs
 #endif
 
 ; ============================================================================
