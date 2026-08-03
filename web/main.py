@@ -562,6 +562,34 @@ def _chemin_projet(projet: str):
     return projet_dir
 
 
+@app.get("/api/projets/nettoyer")
+async def api_projets_nettoyer(seuil: int = 7):
+    """Apercu (dry-run) : liste les projets incomplets candidats a la suppression."""
+    try:
+        from modules.projets.cleanup import nettoyer_projets_incomplets
+    except Exception as e:
+        return {"succes": False, "erreur": f"module cleanup indisponible : {e}"}
+    return nettoyer_projets_incomplets(paths.PROJECTS_DIR, seuil_jours=seuil, supprimer=False)
+
+
+@app.post("/api/projets/nettoyer")
+async def api_projets_nettoyer_post(request: Request, seuil: int = 7):
+    """Supprime reellement les projets incomplets — requiert une confirmation
+    explicite dans le corps JSON : {"confirmer": true}."""
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not body.get("confirmer"):
+        return {"succes": False,
+                "erreur": "Confirmation requise : envoyez un POST avec {\"confirmer\": true}"}
+    try:
+        from modules.projets.cleanup import nettoyer_projets_incomplets
+    except Exception as e:
+        return {"succes": False, "erreur": f"module cleanup indisponible : {e}"}
+    return nettoyer_projets_incomplets(paths.PROJECTS_DIR, seuil_jours=seuil, supprimer=True)
+
+
 @app.get("/api/automation/video")
 async def api_automation_video(projet: str = ""):
     """Sert la video generee d'un projet (lecture / telechargement)."""

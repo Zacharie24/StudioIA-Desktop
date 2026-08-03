@@ -105,6 +105,29 @@ def trouver_soundfont():
 
     return None
 
+
+def _moteur_depuis_config(moteur):
+    """
+    Resout le moteur de rendu audio :
+      - un moteur explicite ("fluidsynth" ou "windows") passe tel quel ;
+      - None/vide lit la cle 'composia_moteur' de la configuration effective
+        StudioIA (defaut "fluidsynth").
+
+    FluidSynth est le moteur par defaut fiable (mixage par piste avec effets).
+    Le moteur Windows (enregistre le son de l'ordinateur en temps reel) n'est
+    utilise que s'il est explicitement choisi, dans la config ou en argument.
+    """
+    if moteur in ("fluidsynth", "windows"):
+        return moteur
+    try:
+        val = paths.lire_config().get("composia_moteur", "fluidsynth")
+        if val in ("fluidsynth", "windows"):
+            return val
+    except Exception:
+        pass
+    return "fluidsynth"
+
+
 # ============================================================
 # Génération musicale
 # ============================================================
@@ -227,48 +250,9 @@ def generer_sortie_sans_interaction(data, args, output_dir):
             resultat = enregistrer_via_windows.exporter(
                 str(midi_path), str(output_dir), args.peripherique, nom=nom_audio
             )
-            if not resultat.get("succes"):
-                log("Echec du rendu Windows", "WARNING")
-                return {
-                    "succes": True,
-                    "midi": str(midi_path),
-                    "strudel": str(strudel_path),
-                    "pistes": pistes,
-                    "audio": None,
-                    "warning": "Echec du rendu Windows"
-                }
-            log(f"Audio genere (Windows): {resultat['wav']}")
-            log(f"MP3 genere (Windows): {resultat['mp3']}")
-            return {
-                "succes": True,
-                "midi": str(midi_path),
-                "strudel": str(strudel_path),
-                "pistes": pistes,
-                "wav": resultat["wav"],
-                "mp3": resultat["mp3"],
-                "seed": seed,
-                "moteur": "windows"
-            }
-        except Exception as e:
-            log(f"Erreur moteur Windows: {e}", "WARNING")
-            return {
-                "succes": True,
-                "midi": str(midi_path),
-                "strudel": str(strudel_path),
-                "pistes": pistes,
-                "audio": None,
-                "warning": str(e)
-            }
-    else:
-        # Mode FluidSynth (défaut)
-        log("Rendu audio (FluidSynth + FFmpeg)...")
-        try:
-            resultat = mixage.mixer_depuis_pistes_midi(
-                pistes, str(output_dir), soundfont, nom=nom_audio
-            )
             if resultat.get("succes"):
-                log(f"Audio genere: {resultat['wav']}")
-                log(f"MP3 genere: {resultat['mp3']}")
+                log(f"Audio genere (Windows): {resultat['wav']}")
+                log(f"MP3 genere (Windows): {resultat['mp3']}")
                 return {
                     "succes": True,
                     "midi": str(midi_path),
@@ -276,28 +260,53 @@ def generer_sortie_sans_interaction(data, args, output_dir):
                     "pistes": pistes,
                     "wav": resultat["wav"],
                     "mp3": resultat["mp3"],
-                    "seed": seed
+                    "seed": seed,
+                    "moteur": "windows"
                 }
-            else:
-                log("Echec du rendu audio", "WARNING")
-                return {
-                    "succes": True,
-                    "midi": str(midi_path),
-                    "strudel": str(strudel_path),
-                    "pistes": pistes,
-                    "audio": None,
-                    "warning": "Echec du rendu audio"
-                }
+            log(f"Echec du moteur Windows ({resultat.get('erreur', 'erreur inconnue')}).", "WARNING")
         except Exception as e:
-            log(f"Erreur audio: {e}", "WARNING")
+            log(f"Erreur moteur Windows: {e}", "WARNING")
+        # Repli automatique sur FluidSynth (moteur fiable par defaut)
+        log("Repli automatique sur FluidSynth pour ce rendu.", "WARNING")
+
+    # Mode FluidSynth (défaut)
+    log("Rendu audio (FluidSynth + FFmpeg)...")
+    try:
+        resultat = mixage.mixer_depuis_pistes_midi(
+            pistes, str(output_dir), soundfont, nom=nom_audio
+        )
+        if resultat.get("succes"):
+            log(f"Audio genere: {resultat['wav']}")
+            log(f"MP3 genere: {resultat['mp3']}")
+            return {
+                "succes": True,
+                "midi": str(midi_path),
+                "strudel": str(strudel_path),
+                "pistes": pistes,
+                "wav": resultat["wav"],
+                "mp3": resultat["mp3"],
+                "seed": seed
+            }
+        else:
+            log("Echec du rendu audio", "WARNING")
             return {
                 "succes": True,
                 "midi": str(midi_path),
                 "strudel": str(strudel_path),
                 "pistes": pistes,
                 "audio": None,
-                "warning": str(e)
+                "warning": "Echec du rendu audio"
             }
+    except Exception as e:
+        log(f"Erreur audio: {e}", "WARNING")
+        return {
+            "succes": True,
+            "midi": str(midi_path),
+            "strudel": str(strudel_path),
+            "pistes": pistes,
+            "audio": None,
+            "warning": str(e)
+        }
 
 
 class Args:
@@ -317,7 +326,7 @@ class Args:
         self.peripherique = "Mixage stereo"
 
 
-def generer_fichiers_composition(composition, projet_path, nom="composition", soundfont_path=None, moteur="fluidsynth", peripherique="Mixage stereo"):
+def generer_fichiers_composition(composition, projet_path, nom="composition", soundfont_path=None, moteur=None, peripherique="Mixage stereo"):
     """
     Generer tous les fichiers MIDI et audio a partir d'une composition
 
@@ -326,7 +335,9 @@ def generer_fichiers_composition(composition, projet_path, nom="composition", so
         projet_path: Chemin du projet StudioIA
         nom: Nom de base pour les fichiers de sortie
         soundfont_path: Chemin optionnel vers une soundfont personnalisée
-        moteur: "fluidsynth" (défaut) ou "windows" pour utiliser le moteur MIDI de Windows
+        moteur: None (lit 'composia_moteur' de la config, defaut fluidsynth),
+                "fluidsynth" (mixage par piste avec effets) ou
+                "windows" (moteur MIDI de Windows, repli automatique sur FluidSynth)
         peripherique: Nom du périphérique de capture audio (uniquement pour moteur="windows")
 
     Returns:
@@ -363,7 +374,8 @@ def generer_fichiers_composition(composition, projet_path, nom="composition", so
 
     log(f"Dossier de sortie: {output_dir}")
 
-    # Creer args
+    # Resoudre le moteur de rendu (config si non précisé) puis creer args
+    moteur = _moteur_depuis_config(moteur)
     args = Args()
     args.soundfont = soundfont_path
     args.moteur = moteur
@@ -373,7 +385,7 @@ def generer_fichiers_composition(composition, projet_path, nom="composition", so
     return generer_sortie_sans_interaction(composition, args, output_dir)
 
 
-def generer_musique_fond(projet_path, prompt, nom="musique_fond", model="mistral", duree_cible=None, soundfont_path=None, moteur="fluidsynth", peripherique="Mixage stereo"):
+def generer_musique_fond(projet_path, prompt, nom="musique_fond", model="mistral", duree_cible=None, soundfont_path=None, moteur=None, peripherique="Mixage stereo"):
     """
     Fonction principale : generer une musique de fond complete a partir d'un prompt.
 
@@ -389,7 +401,9 @@ def generer_musique_fond(projet_path, prompt, nom="musique_fond", model="mistral
         model: Modele Ollama a utiliser
         duree_cible: Duree cible en secondes (optionnel)
         soundfont_path: Chemin personnalisé vers une soundfont
-        moteur: "fluidsynth" (défaut) ou "windows" pour utiliser le moteur MIDI de Windows
+        moteur: None (lit 'composia_moteur' de la config, defaut fluidsynth),
+                "fluidsynth" (mixage par piste avec effets) ou
+                "windows" (moteur MIDI de Windows, repli automatique sur FluidSynth)
         peripherique: Nom du périphérique de capture audio (uniquement pour moteur="windows")
 
     Returns:
@@ -402,6 +416,8 @@ def generer_musique_fond(projet_path, prompt, nom="musique_fond", model="mistral
             - prompt_initial: prompt original
             - metadata: metadonnees de generation
     """
+    # Moteur non précise -> lire 'composia_moteur' de la config (defaut fluidsynth)
+    moteur = _moteur_depuis_config(moteur)
     log(f"Debut de la generation musicale pour: {nom}")
     log(f"Prompt: {prompt}")
     log(f"Moteur: {moteur}")

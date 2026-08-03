@@ -1,4 +1,4 @@
-﻿import json, os, sys, subprocess, re, random, math
+﻿import json, os, sys, subprocess, re, random, math, shutil
 from pathlib import Path
 
 try:
@@ -10,8 +10,39 @@ except ImportError:
     sys.path.insert(0, str(_rac))
     from core import paths
 
+
+def _resoudre_shotcut():
+    """Chemin de l'executable Shotcut dans les emplacements d'installation usuels."""
+    for cand in (r"C:\Program Files\Shotcut\shotcut.exe",
+                 r"C:\Program Files (x86)\Shotcut\shotcut.exe",
+                 os.path.expandvars(r"%LOCALAPPDATA%\Shotcut\shotcut.exe"),
+                 os.path.expandvars(r"%LOCALAPPDATA%\Programs\Shotcut\shotcut.exe")):
+        if os.path.exists(cand):
+            return cand
+    return r"C:\Program Files\Shotcut\shotcut.exe"
+
+
+def log(msg):
+    print(f"[SHOTCUT] {msg}")
+
+
+def _relativiser_mlt(contenu, project_path):
+    """Reecrit un .mlt en remplacant les chemins absolus des medias situes sous
+    le dossier projet par des chemins RELATIFS : le fichier .mlt peut ainsi etre
+    copie/deplace d'un PC a l'autre avec son dossier projet. Les ressources hors
+    projet (ex. musique d'assets) gardent leur chemin (normalise en '/')."""
+    racine = os.path.abspath(project_path).replace("\\", "/").rstrip("/") + "/"
+    def repl(m):
+        chemin = m.group(1)
+        norm = chemin.replace("\\", "/")
+        if racine in norm:
+            return f'<property name="resource">{norm.split(racine, 1)[1]}</property>'
+        return f'<property name="resource">{norm}</property>'
+    return re.sub(r'<property name="resource">([^<]+)</property>', repl, contenu)
+
+
 FFMPEG    = str(paths.FFMPEG)
-SHOTCUT   = "C:\\Program Files\\Shotcut\\shotcut.exe"
+SHOTCUT   = _resoudre_shotcut()
 MUSIC_DIR = str(paths.MUSIC_DIR)
 
 def get_projet_musique(project_path):
@@ -347,8 +378,20 @@ def generer_mlt(project_path, auto=False):
     x.append('  </tractor>')
     x.append('</mlt>')
 
+    contenu_mlt = "\n".join(x)
     with open(mlt_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(x))
+        f.write(contenu_mlt)
+
+    # Copie a la racine du projet, avec chemins RELATIFS pour les medias :
+    # le .mlt « se » avec son dossier projet et peut etre deplace/copie d'un PC
+    # a l'autre sans casser les liens vers les fichiers audio/images.
+    mlt_racine = os.path.join(project_path, f"{projet_id}.shotcut.mlt")
+    try:
+        with open(mlt_racine, "w", encoding="utf-8") as f:
+            f.write(_relativiser_mlt(contenu_mlt, project_path))
+        print(f"\nProjet Shotcut (racine projet, portable) : {mlt_racine}")
+    except Exception as e:
+        print(f"[SHOTCUT] Copie racine impossible : {e}")
 
     print(f"\nProjet Shotcut : {mlt_path}")
     print(f"Chapitres      : {len(items)}")
@@ -525,8 +568,18 @@ def generer_mlt_for_short(project_path, short_idx, titre, audio_path, image_path
     x.append('</mlt>')
 
     # Ecrire le fichier
+    contenu_mlt = "\n".join(x)
     with open(mlt_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(x))
+        f.write(contenu_mlt)
+
+    # Copie a la racine du projet shorts, avec chemins relatifs (portable)
+    mlt_racine = str(Path(project_path) / f"{short_id}.shotcut.mlt")
+    try:
+        with open(mlt_racine, "w", encoding="utf-8") as f:
+            f.write(_relativiser_mlt(contenu_mlt, project_path))
+        print(f"[SHOTCUT] Copie racine projet (portable) : {mlt_racine}")
+    except Exception as e:
+        print(f"[SHOTCUT] Copie racine impossible : {e}")
 
     print(f"[SHOTCUT] Projet Short genere : {mlt_path}")
 
