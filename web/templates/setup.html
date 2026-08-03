@@ -91,6 +91,36 @@
         </div>
 
         <div class="card">
+            <h3>Préparation automatique</h3>
+            <p class="lead" style="margin-bottom:0.8rem;">Installe Ollama s'il manque puis télécharge les modèles IA nécessaires (payload local si présent, sinon téléchargement avec progression). Ne touche pas à ce qui est déjà installé.</p>
+            <div class="flex-row">
+                <button class="btn btn-success" onclick="startPreparer()" id="btnPreparer">Tout installer automatiquement</button>
+                <button class="btn-ghost btn" onclick="loadPreparer()">Actualiser</button>
+            </div>
+            <div id="prepProgress" style="margin-top:0.8rem;"></div>
+        </div>
+
+        <div class="card">
+            <h3>Modèles supplémentaires</h3>
+            <p class="lead" style="margin-bottom:0.8rem;">Ajoute un modèle Ollama plus puissant (ex. <code>qwen3:8b</code>). Il sera utilisé s'il devient disponible en plus des modèles par défaut.</p>
+            <div class="flex-row">
+                <input type="text" id="modele_extra" placeholder="qwen3:8b" style="flex:1; padding:0.6rem; border-radius:6px; border:1px solid #334155; background:#0f172a; color:#fff;">
+                <button class="btn btn-success" onclick="installerModele()" id="btnModele">Installer</button>
+            </div>
+            <div id="modelesList" class="chk-detail" style="margin-top:0.6rem;"></div>
+        </div>
+
+        <div class="card">
+            <h3>Voix XTTS (optionnel)</h3>
+            <p class="lead" style="margin-bottom:0.8rem;">Edge TTS (voix en ligne) fonctionne sans rien installer. Le pack XTTS (voix hors-ligne, ~8 Go) est optionnel : importe-le ici ou place-le dans <code>%USERPROFILE%\StudioIA\xtts</code>.</p>
+            <div class="flex-row">
+                <input type="text" id="xtts_source" placeholder="C:\tts-pentest" style="flex:1; padding:0.6rem; border-radius:6px; border:1px solid #334155; background:#0f172a; color:#fff;">
+                <button class="btn btn-success" onclick="importerXtts()">Importer le pack</button>
+            </div>
+            <div id="xttsMsg" class="chk-detail" style="margin-top:0.6rem;"></div>
+        </div>
+
+        <div class="card">
             <h3>Capacités de la machine (profil auto)</h3>
             <div id="capsBox">
                 <span class="chk-detail">détection en cours…</span>
@@ -157,6 +187,7 @@
         const ETAT_LABELS = {
             ollama: "Ollama",
             modeles: "Modèles IA",
+            xtts: "Voix XTTS (optionnel)",
             ffmpeg: "FFmpeg",
             pexels: "Clé API Pexels",
             youtube: "Clé API YouTube",
@@ -185,8 +216,9 @@
                 ul.appendChild(li);
             });
             document.getElementById('scoreVal').textContent = data.score + '%';
+            const okItems = (data.items || []).filter(i => i.ok).length;
             document.getElementById('scorePct').textContent =
-                data.score >= 100 ? 'Tout est prêt !' : 'Éléments restants : ' + (7 - data.score / 14);
+                data.score >= 100 ? 'Tout est prêt !' : 'Éléments restants : ' + ((data.items || []).length - okItems);
 
             renderCapacites(data.capacites);
         }
@@ -242,6 +274,98 @@
             }
             document.getElementById('btnOllama').disabled = false;
             setTimeout(refreshEtat, 1500);
+        }
+
+        // ==================== Préparation automatique + modèles ====================
+        let prepPoll = null;
+
+        function renderPrepEtat(d) {
+            const el = document.getElementById('prepProgress');
+            if (!el) return;
+            const t = d.etat || {};
+            let html = '';
+            if (t.actif) {
+                html += '<div class="impbar"><div style="width:' + Math.min(100, Math.round(t.progres || 0)) + '%"></div></div>';
+                html += '<div class="chk-detail">' + (t.message || '') + '</div>';
+                document.getElementById('btnPreparer').disabled = true;
+                if (!prepPoll) prepPoll = setInterval(loadPreparer, 1500);
+            } else {
+                if (prepPoll) { clearInterval(prepPoll); prepPoll = null; }
+                document.getElementById('btnPreparer').disabled = false;
+                if (t.termine) {
+                    html += '<div class="chk-detail">' + (t.message || '') + '</div>';
+                    if (t.rapport) html += '<div class="chk-detail">' + t.rapport + '</div>';
+                    if (t.erreur) html += '<div class="msg-err">' + t.erreur + '</div>';
+                }
+            }
+            el.innerHTML = html;
+            renderModelesList(d);
+        }
+
+        function renderModelesList(d) {
+            const el = document.getElementById('modelesList');
+            if (!el) return;
+            const mq = (d.manquants || []).join(', ') || 'aucun';
+            el.textContent = (d.presents || []).length + ' modèle(s) installé(s) · Manquants : ' + mq +
+                (d.bundle_present ? ' · Payload modèles présent (import local sans réseau).'
+                                 : ' · Payload absent (téléchargement si besoin).');
+        }
+
+        async function loadPreparer() {
+            try {
+                const r = await fetch('/api/setup/preparer/etat');
+                const d = await r.json();
+                renderPrepEtat(d);
+            } catch (e) {}
+        }
+
+        async function startPreparer() {
+            try {
+                const r = await fetch('/api/setup/preparer', { method: 'POST' });
+                const d = await r.json();
+                setMsg((d.ok ? '✓ ' : '✗ ') + (d.message || ''), d.ok);
+                if (d.ok) loadPreparer();
+            } catch (e) {
+                setMsg('Requête impossible.', false);
+            }
+        }
+
+        async function installerModele() {
+            const nom = document.getElementById('modele_extra').value.trim();
+            if (!nom) { setMsg('Entre un nom de modèle (ex. qwen3:8b).', false); return; }
+            document.getElementById('btnModele').disabled = true;
+            try {
+                const r = await fetch('/api/setup/modeles/installer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ modele: nom })
+                });
+                const d = await r.json();
+                setMsg((d.ok ? '✓ ' : '✗ ') + (d.message || ''), d.ok);
+                if (d.ok) loadPreparer();
+            } catch (e) {
+                setMsg('Requête impossible.', false);
+            }
+            document.getElementById('btnModele').disabled = false;
+        }
+
+        async function importerXtts() {
+            const source = document.getElementById('xtts_source').value.trim();
+            if (!source) { setMsg('Indique le dossier du pack XTTS.', false); return; }
+            if (!confirm('Importer le pack XTTS depuis ' + source + ' ? (copie seule, volumineux)')) return;
+            try {
+                const r = await fetch('/api/setup/xtts/importer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ source: source })
+                });
+                const d = await r.json();
+                document.getElementById('xttsMsg').innerHTML = (d.ok ? '✓ ' : '✗ ') + (d.message || '');
+                setMsg((d.ok ? '✓ ' : '✗ ') + (d.message || ''), d.ok);
+                setTimeout(refreshEtat, 1200);
+            } catch (e) {
+                setMsg('Requête impossible.', false);
+            }
         }
 
         async function saveConfig() {
@@ -359,6 +483,7 @@
         // Initialisation
         refreshEtat();
         loadImporter();
+        loadPreparer();
     </script>
 </body>
 </html>

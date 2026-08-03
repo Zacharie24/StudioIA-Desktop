@@ -18,10 +18,12 @@ pointe vers le même host/port. Ce module est le seul à connaître l'exécutabl
 les variables d'environnement et le dossier .ollama.
 """
 
+import json
 import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 # CREATE_NO_WINDOW : ne jamais ouvrir de console pour les sous-processus.
@@ -33,6 +35,32 @@ DEFAULT_KEEP_ALIVE = "1m"
 
 # Modèles attendus (vérification / premier lancement).
 MODELES_REQUIS = ["qwen2.5:7b", "mistral:latest"]
+
+# Installeur Ollama officiel (NSIS). Téléchargé à la demande si Ollama absent.
+OLLAMA_SETUP_URL = "https://ollama.com/download/OllamaSetup.exe"
+
+# ---------------------------------------------------------------------------
+# Tâche de préparation (1er lancement) — état global lu par /api/setup/…
+# Un seul processus à la fois (préparation complète OU installation d'un modèle
+# supplémentaire). Imite le pattern de core/importer.ETAT.
+# ---------------------------------------------------------------------------
+TACHE = {
+    "actif": False,
+    "termine": False,
+    "etape": "",          # ollama | modeles | modele_extra | xtts
+    "message": "",
+    "progres": 0.0,       # 0..100 pour la préparation complète
+    "rapport": "",
+    "erreur": None,
+}
+
+
+def _humain(octets):
+    """Formate une taille en Go/Mo/Ko lisible."""
+    for unite, div in (("Go", 1 << 30), ("Mo", 1 << 20), ("Ko", 1 << 10)):
+        if octets >= div:
+            return f"{octets/div:.1f} {unite}"
+    return f"{octets} o"
 
 
 # ---------------------------------------------------------------------------
@@ -242,6 +270,222 @@ def importer_modele_depuis_bundle(nom, bundle_models_dir):
         return False
     from core import ollama
     return ollama.modele_present(nom)
+
+
+# ---------------------------------------------------------------------------
+# Téléchargement + préparation automatisée (1er lancement)
+# ---------------------------------------------------------------------------
+def _telecharger(url, dest, tache=None, debut_pct=0, fin_pct=100):
+    """Télécharge url vers dest (flux), en mettant à jour tache['progres'].
+
+    Écrit d'abord un fichier .part puis le renomme : jamais de fichier
+    tronqué si le téléchargement est interrompu.
+    """
+    import requests
+    dest = Path(dest)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dest.with_suffix(dest.suffix + ".part")
+    with requests.get(url, stream=True, timeout=60) as r:
+        r.raise_for_status()
+        total = int(r.headers.get("content-length", 0) or 0)
+        ok = 0
+        with open(tmp, "wb") as f:
+            for bloc in r.iter_content(chunk_size=256 * 1024):
+                if not bloc:
+                    continue
+                f.write(bloc)
+                ok += len(bloc)
+                if tache is not None:
+                    if total:
+                        tache["progres"] = round(debut_pct + (fin_pct - debut_pct) * ok / total, 1)
+                    tache["message"] = f"Téléchargement… {_humain(ok)} / {_humain(total)}"
+    tmp.replace(dest)
+    if tache is not None:
+        tache["progres"] = round(fin_pct, 1)
+    return dest
+
+
+def _pull_modele_progressif(nom, tache, debut_pct, fin_pct):
+    """`ollama pull nom` en lisant sa sortie JSON (progression réelle).
+
+    Ollama émet des lignes JSON sur stdout quand il n'est pas sur un TTY :
+      {"status":"downloading","completed":N,"total":M,...}
+      {"status":"success",...}
+    On mappe la progression sur [debut_pct, fin_pct] de la tâche globale.
+    """
+    exe = detecter_executable()
+    if not exe:
+        return False
+    try:
+        proc = subprocess.Popen(
+            [exe, "pull", nom],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True, encoding="utf-8", errors="replace",
+            creationflags=CREATE_NO_WINDOW,
+        )
+        for ligne in proc.stdout:
+            ligne = ligne.strip()
+            if not ligne:
+                continue
+            try:
+                j = json.loads(ligne)
+            except Exception:
+                continue  # ligne non-JSON (rare), on ignore
+            status = j.get("status", "")
+            if status == "downloading":
+                comp = j.get("completed", 0)
+                tot = j.get("total", 0)
+                tache["message"] = f"{nom} : téléchargement {_humain(comp)} / {_humain(tot)}"
+                if tot:
+                    tache["progres"] = round(
+                        debut_pct + (fin_pct - debut_pct) * min(comp / tot, 1.0), 1)
+            elif status == "success":
+                tache["message"] = f"{nom} installé."
+        proc.wait()
+        from core import ollama
+        return ollama.modele_present(nom)
+    except Exception:
+        return False
+
+
+def preparer(modeles=None):
+    """Lance la préparation complète du 1er lancement, en arrière-plan :
+    Ollama (installé si absent) + démarrage + modèles requis (bundle sinon
+    pull avec progression). Ne touche jamais à ce qui est déjà présent.
+
+    Stratégie « les deux combinés » : si le payload modèles est présent
+    (bundle-models/), on l'importe localement (0 réseau) ; sinon on
+    télécharge depuis le registre Ollama.
+    """
+    import threading
+    if TACHE["actif"]:
+        return {"ok": False, "message": "Une préparation est déjà en cours."}
+    threading.Thread(target=_executer_preparation, args=(modeles,), daemon=True).start()
+    return {"ok": True, "message": "Préparation lancée en arrière-plan."}
+
+
+def _executer_preparation(modeles):
+    from core import paths, ollama
+    modeles = modeles or MODELES_REQUIS
+    TACHE.update({"actif": True, "termine": False, "erreur": None, "rapport": "",
+                  "etape": "ollama", "message": "Vérification d'Ollama…", "progres": 0})
+    t0 = time.time()
+    try:
+        # 1) Ollama — installé silencieusement si absent (téléchargement officiel).
+        if not ollama_installe():
+            TACHE["message"] = "Ollama absent — téléchargement de l'installeur (~700 Mo)…"
+            setup = _telecharger(OLLAMA_SETUP_URL,
+                                 paths.chemin_data("temp", "OllamaSetup.exe"),
+                                 TACHE, 0, 25)
+            TACHE["message"] = "Installation d'Ollama…"
+            ok, msg = installer_ollama(setup)
+            if not ok:
+                raise RuntimeError(msg)
+        TACHE["progres"] = 35
+        ok, msg = demarrer_serveur()
+        if not ok:
+            raise RuntimeError(msg)
+        TACHE["progres"] = 40
+
+        # 2) Modèles requis — bundle si présent, sinon pull (progression).
+        TACHE["etape"] = "modeles"
+        manquants, _ = modeles_manquants(modeles)
+        bundle = paths.RACINE_APP / "bundle-models"
+        if manquants:
+            part = 60.0 / len(manquants)
+            for i, nom in enumerate(manquants):
+                base = 40 + i * part
+                TACHE["message"] = f"Préparation du modèle {nom}…"
+                if bundle.exists() and importer_modele_depuis_bundle(nom, str(bundle)):
+                    TACHE["message"] = f"{nom} importé du bundle (sans réseau)."
+                    TACHE["progres"] = round(base + part, 1)
+                    continue
+                if not _pull_modele_progressif(nom, TACHE, base, base + part):
+                    raise RuntimeError(f"Impossible d'installer le modèle {nom}")
+                TACHE["progres"] = round(base + part, 1)
+        else:
+            TACHE["message"] = "Modèles déjà présents."
+
+        TACHE["progres"] = 100
+        TACHE["rapport"] = (
+            f"Préparation terminée en {int(time.time() - t0)} s : "
+            f"Ollama actif, {len(ollama.modeles_disponibles())} modèle(s) installé(s)."
+        )
+        TACHE["message"] = "Préparation terminée."
+    except Exception as e:
+        TACHE["erreur"] = str(e)
+        TACHE["message"] = f"Préparation interrompue : {e}"
+    finally:
+        TACHE["actif"] = False
+        TACHE["termine"] = True
+    return dict(TACHE)
+
+
+def installer_modele(nom):
+    """Installe un modèle supplémentaire (plus puissant, à la demande) en fond."""
+    import threading
+    nom = (nom or "").strip()
+    if not nom:
+        return {"ok": False, "message": "Nom de modèle manquant"}
+    if TACHE["actif"]:
+        return {"ok": False, "message": "Une préparation est déjà en cours."}
+    threading.Thread(target=_executer_installation_modele, args=(nom,), daemon=True).start()
+    return {"ok": True, "message": f"Installation de {nom} lancée en arrière-plan."}
+
+
+def _executer_installation_modele(nom):
+    from core import ollama
+    TACHE.update({"actif": True, "termine": False, "erreur": None, "rapport": "",
+                  "etape": "modele_extra", "message": f"Installation de {nom}…", "progres": 0})
+    try:
+        if ollama.modele_present(nom):
+            TACHE["message"] = f"{nom} déjà présent."
+            TACHE["progres"] = 100
+        else:
+            ok, msg = demarrer_serveur()
+            if not ok:
+                raise RuntimeError(msg)
+            if not _pull_modele_progressif(nom, TACHE, 0, 100):
+                raise RuntimeError(f"Échec de l'installation de {nom}")
+            TACHE["progres"] = 100
+            TACHE["message"] = f"{nom} installé."
+        TACHE["rapport"] = f"{nom} prêt."
+    except Exception as e:
+        TACHE["erreur"] = str(e)
+        TACHE["message"] = f"Installation interrompue : {e}"
+    finally:
+        TACHE["actif"] = False
+        TACHE["termine"] = True
+    return dict(TACHE)
+
+
+# ---------------------------------------------------------------------------
+# XTTS (voix optionnelle) — détection + import d'un pack local
+# ---------------------------------------------------------------------------
+def xtts_ok():
+    """True si le pack XTTS est utilisable (venv présent)."""
+    from core import paths
+    return paths.tts_venv_python() is not None
+
+
+def importer_pack_xtts(source):
+    """Copie un pack XTTS local (ex. StudioIA-XTTS, C:\\tts-pentest) vers
+    DATA_DIR\\xtts, que l'app détecte alors automatiquement. Copie seule."""
+    from core import paths
+    src = Path(source)
+    if not (src / "venv" / "Scripts" / "python.exe").exists():
+        return False, "Pack invalide : pas de venv\\Scripts\\python.exe à la source"
+    if src.resolve() == paths.XTTS_DIR.resolve():
+        return False, "Ce dossier est déjà la destination"
+    try:
+        dst = paths.XTTS_DIR
+        dst.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(str(src), str(dst), dirs_exist_ok=True)
+        if xtts_ok():
+            return True, f"Pack XTTS importé dans {dst}"
+        return False, "Pack copié mais non détecté par l'app (venv\\Scripts\\python.exe absent ?)"
+    except Exception as e:
+        return False, f"Échec de l'import XTTS : {e}"
 
 
 # ---------------------------------------------------------------------------

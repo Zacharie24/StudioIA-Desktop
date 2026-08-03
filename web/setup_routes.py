@@ -92,6 +92,9 @@ async def api_setup_etat():
     items.append({"cle": "modeles", "label": "Modèles IA (qwen2.5:7b + mistral)",
                   "ok": len(manquants) == 0,
                   "detail": ", ".join(manquants) if manquants else f"{len(presents)} modèle(s)"})
+    items.append({"cle": "xtts", "label": "Voix XTTS (optionnel)",
+                  "ok": True,
+                  "detail": "pack présent" if services.xtts_ok() else "Edge (en ligne) — pack optionnel"})
     items.append({"cle": "ffmpeg", "label": "FFmpeg",
                   "ok": services.ffmpeg_ok(), "detail": "présent"})
     cfg = _lire_config()
@@ -169,6 +172,50 @@ async def api_setup_import_modeles():
         except Exception as e:
             errors.append(f"{nom}: {e}")
     return {"ok": len(errors) == 0, "importe": importe, "erreurs": errors}
+
+
+@setup_router.get("/api/setup/preparer/etat")
+async def api_setup_preparer_etat():
+    """État de la préparation automatisée (Ollama + modèles)."""
+    from core import services, paths
+    manquants, presents = services.modeles_manquants()
+    return {
+        "etat": dict(services.TACHE),
+        "ollama_installe": services.ollama_installe(),
+        "manquants": manquants,
+        "presents": presents,
+        "bundle_present": (paths.RACINE_APP / "bundle-models").exists(),
+        "xtts": services.xtts_ok(),
+    }
+
+
+@setup_router.post("/api/setup/preparer")
+async def api_setup_preparer(body: dict | None = None):
+    """Lance la préparation complète (Ollama + modèles requis) en arrière-plan."""
+    from core import services
+    modeles = (body or {}).get("modeles")
+    if modeles:
+        modeles = [m for m in modeles if isinstance(m, str) and m.strip()]
+    return services.preparer(modeles)
+
+
+@setup_router.post("/api/setup/modeles/installer")
+async def api_setup_modeles_installer(body: dict | None = None):
+    """Installe un modèle Ollama supplémentaire (à la demande, en arrière-plan)."""
+    from core import services
+    nom = (body or {}).get("modele") or (body or {}).get("nom")
+    return services.installer_modele(nom or "")
+
+
+@setup_router.post("/api/setup/xtts/importer")
+async def api_setup_xtts_importer(body: dict | None = None):
+    """Importe un pack XTTS local vers DATA_DIR\\xtts (détecté ensuite par l'app)."""
+    from core import services
+    source = (body or {}).get("source") or ""
+    if not source:
+        return {"ok": False, "message": "Chemin du pack XTTS manquant"}
+    ok, msg = services.importer_pack_xtts(source)
+    return {"ok": ok, "message": msg}
 
 
 def _source_importer_def():
