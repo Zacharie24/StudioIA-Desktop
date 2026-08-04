@@ -36,6 +36,11 @@ RACINE_APP = Path(__file__).resolve().parent.parent
 _env_data = os.environ.get("STUDIOIA_DATA_DIR", "").strip()
 if _env_data:
     DATA_DIR = Path(_env_data)
+elif (Path.home() / "StudioIA" / "config.json").exists():
+    # Donnees migrees detectees en %USERPROFILE%\StudioIA (Phase 9) : les
+    # preferer meme en mode source. Sinon config/OAuth/projets migres seraient
+    # invisibles quand le backend est lance sans STUDIOIA_DATA_DIR.
+    DATA_DIR = Path.home() / "StudioIA"
 else:
     DATA_DIR = RACINE_APP
 
