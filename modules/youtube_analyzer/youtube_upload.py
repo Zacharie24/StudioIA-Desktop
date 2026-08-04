@@ -25,8 +25,16 @@ from datetime import datetime
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-CONFIG_PATH = Path(__file__).parent.parent.parent / "config.json"
-OAUTH_DIR = Path(__file__).parent.parent.parent / "data" / "youtube_oauth"
+# Isolement des chemins (Phase 9) : DATA_DIR = %USERPROFILE%\StudioIA en mode
+# installe (via STUDIOIA_DATA_DIR), racine du projet en mode source. Repli sur
+# l'ancien chemin si core.paths indisponible (compatibilite).
+try:
+    from core.paths import DATA_DIR
+    CONFIG_PATH = DATA_DIR / "config.json"
+    OAUTH_DIR = DATA_DIR / "data" / "youtube_oauth"
+except Exception:
+    CONFIG_PATH = Path(__file__).parent.parent.parent / "config.json"
+    OAUTH_DIR = Path(__file__).parent.parent.parent / "data" / "youtube_oauth"
 CLIENT_SECRET_PATH = OAUTH_DIR / "client_secret.json"
 TOKEN_PATH = OAUTH_DIR / "token.json"
 

@@ -22,8 +22,14 @@ from collections import Counter
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-CONFIG_PATH = Path(__file__).parent.parent.parent / "config.json"
-AUDITS_DIR = Path(__file__).parent.parent.parent / "data" / "audits"
+# Isolement des chemins (Phase 9) : DATA_DIR en mode installe, repli racine.
+try:
+    from core.paths import DATA_DIR
+    CONFIG_PATH = DATA_DIR / "config.json"
+    AUDITS_DIR = DATA_DIR / "data" / "audits"
+except Exception:
+    CONFIG_PATH = Path(__file__).parent.parent.parent / "config.json"
+    AUDITS_DIR = Path(__file__).parent.parent.parent / "data" / "audits"
 
 
 def log(msg):
@@ -914,7 +920,7 @@ def generer_plan_rythme(chaine, patterns, videos, comparaisons=None):
 # ---------------------------------------------------------------
 
 def _fichier_surveillance():
-    return Path(__file__).parent.parent.parent / "data" / "audits" / "surveillance.json"
+    return AUDITS_DIR / "surveillance.json"
 
 
 def get_chaine_cible():

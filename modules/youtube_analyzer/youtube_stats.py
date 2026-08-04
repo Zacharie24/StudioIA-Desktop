@@ -17,7 +17,12 @@ import requests
 from pathlib import Path
 from datetime import datetime, timedelta
 
-CONFIG_PATH = Path(__file__).parent.parent.parent / "config.json"
+try:
+    sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+    from core.paths import DATA_DIR
+    CONFIG_PATH = DATA_DIR / "config.json"
+except Exception:
+    CONFIG_PATH = Path(__file__).parent.parent.parent / "config.json"
 
 
 def log(msg):

@@ -24,8 +24,14 @@ from collections import Counter
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-CONFIG_PATH = Path(__file__).parent.parent.parent / "config.json"
-ANALYSIS_DIR = Path(__file__).parent.parent.parent / "data" / "audits"
+# Isolement des chemins (Phase 9) : DATA_DIR en mode installe, repli racine.
+try:
+    from core.paths import DATA_DIR
+    CONFIG_PATH = DATA_DIR / "config.json"
+    ANALYSIS_DIR = DATA_DIR / "data" / "audits"
+except Exception:
+    CONFIG_PATH = Path(__file__).parent.parent.parent / "config.json"
+    ANALYSIS_DIR = Path(__file__).parent.parent.parent / "data" / "audits"
 ANALYSIS_FILE = ANALYSIS_DIR / "comments_analysis.json"
 
 # Mots/expressions qui signalent une priere ecrite ou une demande
