@@ -33,18 +33,15 @@ def log(msg):
 
 
 def _appeler_llm(prompt, modele="mistral", temperature=0.3):
-    """Appelle Ollama pour analyser"""
+    """Appelle le LLM configure pour analyser (Ollama ou OmniRoute)"""
     try:
-        r = requests.post("http://localhost:11434/api/generate", json={
-            "model": modele,
-            "prompt": prompt,
-            "stream": False,
-            "options": {"temperature": temperature, "repeat_penalty": 1.1}
-        }, timeout=30)
-        return r.json()["response"].strip()
-    except requests.exceptions.Timeout:
-        log("LLM timeout (30s)")
-        return None
+        from llm import appeler_llm as _llm
+    except ImportError:
+        sys.path.insert(0, str(Path(__file__).parent.parent))
+        from llm import appeler_llm as _llm
+    try:
+        return _llm(prompt, modele=modele, temperature=temperature,
+                    timeout=30).strip()
     except Exception as e:
         log(f"Erreur LLM: {e}")
         return None

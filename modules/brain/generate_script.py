@@ -1,14 +1,7 @@
 ﻿import json, sys, os, requests, logging
 
-try:
-    from core import paths
-except ImportError:
-    _rac = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    sys.path.insert(0, _rac)
-    from core import paths
-
 # Import des modules web research et IA online
-sys.path.insert(0, str(paths.MODULES_DIR / "brain"))
+sys.path.insert(0, "C:\\StudioIA-Next\\modules\\brain")
 from web_research import enrichir_prompt_avec_recherche, est_connecte_internet
 from ia_online import generer_prompt_online
 from spelling_corrector import corriger_chapitre, verifier_chapitre
@@ -395,7 +388,7 @@ Reponds UNIQUEMENT avec un JSON valide :
 def choisir_providers():
     """Renvoie les providers à utiliser selon config.json"""
     try:
-        config = lire_json(paths.config_path())
+        config = lire_json("C:\\StudioIA-Next\\config.json")
         return config.get("providers", {
             "plan": "local",           # local, huggingface, ou online (tout en ligne)
             "chapitre": "local"        # local, huggingface, ou online (tout en ligne)
@@ -407,27 +400,23 @@ def choisir_providers():
 def activer_recherche_web():
     """Vérifie si la recherche web est activée dans config.json"""
     try:
-        config = lire_json(paths.config_path())
+        config = lire_json("C:\\StudioIA-Next\\config.json")
         return config.get("web_research", False)
     except:
         return False
 
 
 def appeler_ollama(prompt, modele=None, temperature=0.8):
-    """Appel local via Ollama"""
+    """Appel LLM unifié (Ollama local ou OmniRoute cloud)"""
     if modele is None:
         modele = "mistral"
-    response = requests.post("http://localhost:11434/api/generate", json={
-        "model": modele,
-        "prompt": prompt,
-        "stream": False,
-        "options": {
-            "temperature": temperature,
-            "repeat_penalty": 1.3,
-            "repeat_last_n": 128
-        }
-    })
-    return response.json()["response"], modele
+    try:
+        from llm import appeler_llm
+    except ImportError:
+        sys.path.insert(0, str(Path(__file__).parent.parent))
+        from llm import appeler_llm
+    texte = appeler_llm(prompt, modele=modele, temperature=temperature)
+    return texte, modele
 
 
 def appeler_ia_online(prompt, modele="mistral", provider="huggingface", query_recherche=None):
@@ -692,7 +681,7 @@ def calculer_mots_par_chapitre(duree_minutes, nb_chapitres):
 
 def main():
     project_path = sys.argv[1]
-    config = lire_json(paths.config_path())
+    config = lire_json("C:\\StudioIA-Next\\config.json")
     project = lire_json(os.path.join(project_path, "project.json"))
 
     # Correction anti-crash : garantir que les sous-dossiers existent avant d'ecrire

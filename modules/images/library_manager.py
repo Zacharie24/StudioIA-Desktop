@@ -9,15 +9,6 @@ except (ImportError, ValueError):
     sys.path.insert(0, str(Path(__file__).parent.parent))
     from api_keys import PEXELS_KEY, UNSPLASH_KEY
 
-try:
-    from core import paths
-except ImportError:
-    _rac = Path(__file__).resolve().parent
-    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
-        _rac = _rac.parent
-    sys.path.insert(0, str(_rac))
-    from core import paths
-
 # Timeout pour les requêtes IA (évite les blocages)
 OLLAMA_TIMEOUT = 60
 
@@ -55,7 +46,7 @@ def ecrire_json(path, data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 def generer_mots_cles(sujet, langue):
-    style = lire_json(paths.chemin_app("style_redaction.json"))
+    style = lire_json("C:\\StudioIA\\style_redaction.json")
     eviter = ", ".join(style.get("mots_a_eviter", []))
     # Create a privilege list from the new style format
     privilegier_list = []
@@ -75,11 +66,12 @@ UNIQUEMENT JSON valide :
 {{"backgrounds": ["mot1","mot2","mot3","mot4","mot5","mot6","mot7","mot8","mot9","mot10"], "overlays": ["mot1","mot2","mot3","mot4","mot5"]}}"""
 
     try:
-        r = requete_avec_retry(
-            "http://localhost:11434/api/generate",
-            {"model": "mistral", "prompt": prompt, "stream": False}
-        )
-        texte = r.json()["response"]
+        try:
+            from llm import appeler_llm
+        except ImportError:
+            sys.path.insert(0, str(Path(__file__).parent.parent))
+            from llm import appeler_llm
+        texte = appeler_llm(prompt, modele="mistral", timeout=OLLAMA_TIMEOUT)
         debut = texte.find("{")
         fin = texte.rfind("}") + 1
         return json.loads(texte[debut:fin])
@@ -92,11 +84,13 @@ def generer_nom(sujet, mot_cle, index, type_img, langue):
 Donne un nom de fichier descriptif en {langue}, sans espaces, sans accents, minuscules, underscores, max 4 mots.
 UNIQUEMENT le nom sans extension."""
     try:
-        r = requete_avec_retry(
-            "http://localhost:11434/api/generate",
-            {"model": "mistral", "prompt": prompt, "stream": False}
-        )
-        nom = r.json()["response"].strip().lower()
+        try:
+            from llm import appeler_llm
+        except ImportError:
+            sys.path.insert(0, str(Path(__file__).parent.parent))
+            from llm import appeler_llm
+        texte = appeler_llm(prompt, modele="mistral", timeout=OLLAMA_TIMEOUT)
+        nom = texte.strip().lower()
         nom = "".join(c for c in nom.replace(" ","_").replace("-","_") if c.isalnum() or c=="_")
         return f"{type_img}_{index:02d}_{nom[:30]}"
     except Exception as e:
@@ -170,7 +164,7 @@ def nettoyer_memoire():
 def main():
     project_path = sys.argv[1]
     pjson = os.path.join(project_path, "project.json")
-    config = lire_json(paths.config_path())
+    config = lire_json("C:\\StudioIA\\config.json")
     data = lire_json(pjson)
 
     sujet = data["sujet"]

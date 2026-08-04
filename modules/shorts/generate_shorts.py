@@ -1,15 +1,6 @@
 import json, os, sys, requests, subprocess, random, shutil, re, time
 from pathlib import Path
 
-try:
-    from core import paths
-except ImportError:
-    _rac = Path(__file__).resolve().parent
-    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
-        _rac = _rac.parent
-    sys.path.insert(0, str(_rac))
-    from core import paths
-
 # Import voix_config - support pour module et mode direct
 try:
     from ..tts.voix_config import VOIX_MAP_SHORTS
@@ -24,12 +15,12 @@ try:
     from ..audio.composia import generer_musique_fond, preparer_audio_pour_video
 except (ImportError, ValueError):
     # En mode direct
-    composia_path = paths.MODULES_DIR / "audio"
+    composia_path = Path(r"C:\\StudioIA-Next\modules\audio")
     sys.path.insert(0, str(composia_path))
     from composia import generer_musique_fond, preparer_audio_pour_video
 
-FFMPEG = str(paths.FFMPEG)
-MUSIC_DIR = str(paths.MUSIC_DIR)
+FFMPEG = "C:\\StudioIA\\tools\\ffmpeg\\ffmpeg.exe"
+MUSIC_DIR = "C:\\StudioIA\\assets\\music"
 
 def log(msg):
     print(f"[SHORTS] {msg}")
@@ -44,11 +35,12 @@ def ecrire_json(path, data):
 
 def ollama(prompt, modele="mistral"):
     try:
-        r = requests.post("http://localhost:11434/api/generate", json={
-            "model": modele, "prompt": prompt, "stream": False,
-            "options": {"temperature": 0.8, "repeat_penalty": 1.3}
-        })
-        return r.json()["response"].strip()
+        try:
+            from llm import appeler_llm
+        except ImportError:
+            sys.path.insert(0, str(Path(__file__).parent.parent))
+            from llm import appeler_llm
+        return appeler_llm(prompt, modele=modele, temperature=0.8).strip()
     except Exception as e:
         log(f"Ollama erreur : {e}")
         return ""
@@ -107,11 +99,12 @@ Reponds UNIQUEMENT en JSON valide :
 {{"shorts": ["Titre 1", "Titre 2", "Titre 3"]}}"""
     
     try:
-        r = requests.post("http://localhost:11434/api/generate", json={
-            "model": "mistral", "prompt": prompt, "stream": False,
-            "options": {"temperature": 0.9}
-        })
-        texte = r.json()["response"]
+        try:
+            from llm import appeler_llm
+        except ImportError:
+            sys.path.insert(0, str(Path(__file__).parent.parent))
+            from llm import appeler_llm
+        texte = appeler_llm(prompt, modele="mistral", temperature=0.9)
         debut = texte.find("{")
         fin   = texte.rfind("}") + 1
         return json.loads(texte[debut:fin])["shorts"]
@@ -210,16 +203,12 @@ COMMENCE DIRECTEMENT PAR LE SUJET — JAMAIS par une phrase d'introduction ou de
     return ollama(prompt)
 
 def _run_tts_script(texte, output_wav, moteur, voix, nom_fichier="short_audio"):
-    """Execute une generation TTS via le venv du pack XTTS (résolu par core/paths)."""
-    tts_root = paths.tts_path()
-    if not tts_root:
-        log("Pack TTS (XTTS) absent pour ce short — abandon TTS local")
-        return False
-    venv_python = os.path.join(tts_root, "venv", "Scripts", "python.exe")
+    """Execute une generation TTS via le venv C:\\tts-pentest. Retourne True si OK."""
+    venv_python = "C:\\tts-pentest\\venv\\Scripts\\python.exe"
 
     script = f"""
 import sys
-sys.path.insert(0, r"{tts_root}")
+sys.path.insert(0, r"C:\\tts-pentest")
 from tts_total import initialiser_projet, generer_long_texte
 import shutil, os
 
@@ -241,7 +230,7 @@ else:
         f.write(script)
 
     try:
-        subprocess.run([venv_python, script_path], cwd=tts_root, capture_output=False)
+        subprocess.run([venv_python, script_path], cwd="C:\\tts-pentest", capture_output=False)
     except Exception:
         pass
     finally:
@@ -399,7 +388,7 @@ def generer_musique_fond_projet(shorts_path, sujet, type_contenu, config):
 
     # Étape 2: Fallback vers musique existante
     log("  Fallback vers musique existante...")
-    music_file = choisir_musique(str(paths.MUSIC_DIR))
+    music_file = choisir_musique(config.get("music_path", ""))
     if music_file:
         # Copier la musique dans le dossier audio du projet
         import shutil
@@ -430,7 +419,7 @@ def ajouter_musique(video_path, music_path, output_path, music_volume=0.15):
 
 def lire_video_config(project_path=None):
     # Pour les shorts, on utilise la config globale
-    cfg_path = str(paths.chemin_app("config_video.json"))
+    cfg_path = "C:\\StudioIA\\config_video.json"
     if os.path.exists(cfg_path):
         with open(cfg_path, "r", encoding="utf-8-sig") as f:
             return json.load(f)
@@ -531,7 +520,7 @@ def creer_video_short(audio_path, image_path, output_path, titre, config, shorts
             log(f"  Musique de fond: {musique_composia.name}")
         else:
             # Fallback vers musique_path dans config
-            music_file = choisir_musique(str(paths.MUSIC_DIR))
+            music_file = choisir_musique(config.get("music_path", ""))
 
     # Constructeur de commande FFmpeg
     cmd = [
@@ -625,7 +614,7 @@ def generer_thumbnail_short(titre, output_path, style_couleur=(255,215,0)):
         return False
 
 def main():
-    config = lire_json(paths.config_path())
+    config = lire_json("C:\\StudioIA\\config.json")
 
     # Detecter si on reprend un projet existant (chemin passe en argument)
     project_path = sys.argv[1] if len(sys.argv) > 1 else None
@@ -794,7 +783,7 @@ def main():
             import importlib.util
             spec = importlib.util.spec_from_file_location(
                 "gen_shotcut",
-                str(paths.MODULES_DIR / "video" / "gen_shotcut.py")
+                os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "video", "gen_shotcut.py")
             )
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)

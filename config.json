@@ -38,5 +38,7 @@
     "channel_id": "UCzHeCJM5gkW7ZV3jR4ptaZg",
     "nom": "Prière Connection Divine",
     "definie_le": "2026-07-31T10:27:22.462159"
-  }
+  },
+  "fournisseur_llm": "ollama",
+  "fournisseur_llm_modele": "mistral"
 }

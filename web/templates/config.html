@@ -136,6 +136,31 @@
             </div>
 
             <div class="card">
+                <h3>Generateur IA</h3>
+
+                <div class="field">
+                    <label>Fournisseur LLM</label>
+                    <select id="fournisseur_llm">
+                        <option value="ollama" {{ 'selected' if config.fournisseur_llm == 'ollama' else '' }}>Ollama (local, gratuit)</option>
+                        <option value="omniroute" {{ 'selected' if config.fournisseur_llm == 'omniroute' else '' }}>OmniRoute (cloud, rapide)</option>
+                    </select>
+                    <div class="hint">
+                        Ollama : tourne sur ce PC (lent, gratuit). OmniRoute : gere la bascule auto entre 268 providers cloud (rapide, gratuit via auto/fast).
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label>Modele</label>
+                    <input type="text" id="fournisseur_llm_modele"
+                           value="{{ config.fournisseur_llm_modele or '' }}"
+                           placeholder="auto / mistral">
+                    <div class="hint">
+                        Ollama : mistral, qwen2.5:7b... | OmniRoute : auto/fast, auto/best-chat, ddgw/gpt-4o-mini...
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
                 <h3>Audio</h3>
 
                 <div class="field">
@@ -222,7 +247,9 @@
                 music_volume: parseFloat(document.getElementById('music_volume').value) || 0.25,
                 reverb_level: parseFloat(document.getElementById('reverb_level').value) || 0.3,
                 subtitle_style: document.getElementById('subtitle_style').value,
-                subtitle_size: parseFloat(document.getElementById('subtitle_size').value) || 12
+                subtitle_size: parseFloat(document.getElementById('subtitle_size').value) || 12,
+                fournisseur_llm: document.getElementById('fournisseur_llm').value,
+                fournisseur_llm_modele: document.getElementById('fournisseur_llm_modele').value.trim() || (document.getElementById('fournisseur_llm').value === 'omniroute' ? 'auto/fast' : 'mistral')
             };
 
             try {

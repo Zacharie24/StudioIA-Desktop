@@ -14,22 +14,13 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 from datetime import datetime
 
-try:
-    from core import paths
-except ImportError:
-    _rac = Path(__file__).resolve().parent
-    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
-        _rac = _rac.parent
-    sys.path.insert(0, str(_rac))
-    from core import paths
-
 # Paths
-OUTPUT_DIR = str(paths.TEMP_DIR / "thumbnails")
-CONFIG_PATH = str(paths.config_path())
-ASSETS_PATH = str(paths.ASSETS_DIR)
+OUTPUT_DIR = "C:\\StudioIA\\temp\\thumbnails"
+CONFIG_PATH = "C:\\StudioIA\\config.json"
+ASSETS_PATH = "C:\\StudioIA\\assets"
 
 # Import modules
-paths.ajouter_modules_au_path()
+sys.path.insert(0, "C:\\StudioIA\\modules")
 from api_keys import PEXELS_KEY
 
 # Styles
@@ -288,14 +279,15 @@ Titre YouTube court, max 4 mots en {langue_nom.upper()}, pas de guillemets.""").
 
     def _ollama(self, prompt):
         try:
-            import requests
-            r = requests.post("http://localhost:11434/api/generate", json={
-                "model": "qwen2.5:7b",
-                "prompt": prompt,
-                "stream": False,
-                "options": {"temperature": 0.7}
-            }, timeout=30)
-            return r.json()["response"].strip()
+            try:
+                from llm import appeler_llm
+            except ImportError:
+                import sys
+                from pathlib import Path
+                sys.path.insert(0, str(Path(__file__).parent.parent))
+                from llm import appeler_llm
+            return appeler_llm(prompt, modele="qwen2.5:7b",
+                               temperature=0.7, timeout=30).strip()
         except Exception as e:
             self.log(f"  Ollama erreur: {e}")
             return "Titre par defaut"

@@ -41,18 +41,13 @@ def choisir_meilleur_modele():
 def appeler_ollama(prompt, modele=None, temperature=0.8):
     if modele is None:
         modele = choisir_meilleur_modele()
-
-    response = requests.post("http://localhost:11434/api/generate", json={
-        "model": modele,
-        "prompt": prompt,
-        "stream": False,
-        "options": {
-            "temperature": temperature,
-            "repeat_penalty": 1.3,
-            "repeat_last_n": 128
-        }
-    })
-    return response.json()["response"], modele
+    try:
+        from llm import appeler_llm
+    except ImportError:
+        sys.path.insert(0, str(Path(__file__).parent.parent))
+        from llm import appeler_llm
+    texte = appeler_llm(prompt, modele=modele, temperature=temperature)
+    return texte, modele
 
 if __name__ == "__main__":
     modele = choisir_meilleur_modele()

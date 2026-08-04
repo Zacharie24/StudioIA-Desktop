@@ -1,15 +1,6 @@
 ﻿import json, os, sys, requests, re
 from pathlib import Path
 
-try:
-    from core import paths
-except ImportError:
-    _rac = Path(__file__).resolve().parent
-    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
-        _rac = _rac.parent
-    sys.path.insert(0, str(_rac))
-    from core import paths
-
 def log(msg):
     print(f"[NOM] {msg}")
 
@@ -23,7 +14,7 @@ def ecrire_json(path, data):
 
 def generer_nom_court(sujet, langue="fr"):
     try:
-        sys.path.insert(0, str(paths.MODULES_DIR / "brain"))
+        sys.path.insert(0, "C:\\StudioIA\\modules\\brain")
         from model_selector import choisir_meilleur_modele
         modele = choisir_meilleur_modele()
     except:
@@ -43,13 +34,13 @@ Example: divine_protection_prayer
 ONLY the name, nothing else."""
 
     try:
-        r = requests.post("http://localhost:11434/api/generate", json={
-            "model": modele,
-            "prompt": prompt,
-            "stream": False,
-            "options": {"temperature": 0.3}
-        })
-        nom = r.json()["response"].strip().lower()
+        try:
+            from llm import appeler_llm
+        except ImportError:
+            sys.path.insert(0, str(Path(__file__).parent.parent))
+            from llm import appeler_llm
+        texte = appeler_llm(prompt, modele=modele, temperature=0.3)
+        nom = texte.strip().lower()
         nom = re.sub(r'[^a-z0-9_]', '_', nom)
         nom = re.sub(r'_+', '_', nom).strip('_')
         return nom[:40]

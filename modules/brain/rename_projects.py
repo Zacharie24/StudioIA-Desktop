@@ -1,15 +1,6 @@
 ﻿import json, os, sys, requests, re, shutil
 from pathlib import Path
 
-try:
-    from core import paths
-except ImportError:
-    _rac = Path(__file__).resolve().parent
-    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
-        _rac = _rac.parent
-    sys.path.insert(0, str(_rac))
-    from core import paths
-
 def log(msg):
     print(f"[NOM] {msg}")
 
@@ -23,17 +14,17 @@ def ecrire_json(path, data):
 
 def generer_nom(sujet, langue="fr"):
     try:
-        r = requests.post("http://localhost:11434/api/generate", json={
-            "model": "mistral",
-            "prompt": f"""Sujet : "{sujet}"
+        try:
+            from llm import appeler_llm
+        except ImportError:
+            sys.path.insert(0, str(Path(__file__).parent.parent))
+            from llm import appeler_llm
+        texte = appeler_llm(f"""Sujet : "{sujet}"
 Genere un nom de dossier court en {'francais' if langue == 'fr' else 'anglais'}.
 Maximum 4 mots, sans accents, sans espaces, utilise underscores, minuscules.
 Exemple : priere_protection_divine
-UNIQUEMENT le nom, rien d autre.""",
-            "stream": False,
-            "options": {"temperature": 0.3}
-        })
-        nom = r.json()["response"].strip().lower()
+UNIQUEMENT le nom, rien d autre.""", modele="mistral", temperature=0.3)
+        nom = texte.strip().lower()
         nom = re.sub(r'[^a-z0-9_]', '_', nom)
         nom = re.sub(r'_+', '_', nom).strip('_')
         return nom[:35]
@@ -85,7 +76,7 @@ def renommer_tous_projets(projects_path):
             log(f"Deja bon : {p.name}")
 
 def main():
-    projects_path = str(paths.PROJECTS_DIR)
+    projects_path = "C:\\StudioIA\\projects"
     if len(sys.argv) > 1:
         projects_path = sys.argv[1]
     log(f"Renommage de tous les projets dans : {projects_path}")

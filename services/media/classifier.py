@@ -226,14 +226,13 @@ Thèmes simples (1-2 mots) : nature, paysage, émotion, atmosphère.
 Format : UNIQUEMENT JSON valide : {{"themes": ["theme1","theme2","theme3","theme4","theme5"]}}"""
 
     try:
-        import requests
-        r = requests.post(
-            "http://localhost:11434/api/generate",
-            json={"model": "mistral", "prompt": prompt, "stream": False},
-            timeout=15
-        )
-        r.raise_for_status()
-        texte = r.json()["response"]
+        import sys
+        try:
+            from llm import appeler_llm
+        except ImportError:
+            sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+            from llm import appeler_llm
+        texte = appeler_llm(prompt, modele="mistral", timeout=15)
         debut = texte.find("{")
         fin = texte.rfind("}") + 1
         if debut >= 0 and fin > debut:

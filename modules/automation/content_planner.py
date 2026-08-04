@@ -13,12 +13,6 @@ from datetime import datetime, timedelta
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from core.profiles.profile_manager import get_manager as get_profile_manager
-try:
-    from core import paths
-except ImportError:
-    _rac = Path(__file__).resolve().parent.parent.parent
-    sys.path.insert(0, str(_rac))
-    from core import paths
 
 
 def _lire_config():
@@ -31,20 +25,16 @@ def _lire_config():
 
 
 def _appeler_llm(prompt, modele="mistral", temperature=0.4, timeout=30):
-    """Interroge Ollama local"""
-    import requests
+    """Interroge le LLM configure (Ollama local ou OmniRoute cloud)"""
     try:
-        r = requests.post("http://localhost:11434/api/generate", json={
-            "model": modele,
-            "prompt": prompt,
-            "stream": False,
-            "temperature": temperature,
-            "max_tokens": 512
-        }, timeout=timeout)
-        if r.status_code == 200:
-            return r.json().get("response", "").strip()
-        return None
-    except:
+        from llm import appeler_llm as _llm
+    except ImportError:
+        sys.path.insert(0, str(Path(__file__).parent.parent))
+        from llm import appeler_llm as _llm
+    try:
+        return _llm(prompt, modele=modele, temperature=temperature,
+                    max_tokens=512, timeout=timeout).strip() or None
+    except Exception:
         return None
 
 
@@ -101,7 +91,7 @@ def suggerer_contenu(profil_id="prayer", tendances=None):
     langue = manifest.get("langue", "fr")
 
     # Charger les projets existants
-    projects_path = paths.PROJECTS_DIR
+    projects_path = Path(__file__).parent.parent.parent / "projects"
     sujets_existants = []
     if projects_path.exists():
         for p in sorted(projects_path.iterdir(), reverse=True)[:20]:
@@ -299,7 +289,7 @@ def analyser_performances_profil(profil_id="prayer"):
     }
 
     # Stats des projets
-    projects_path = paths.PROJECTS_DIR
+    projects_path = Path(__file__).parent.parent.parent / "projects"
     durees = []
     if projects_path.exists():
         for p in projects_path.iterdir():

@@ -1,15 +1,6 @@
 ﻿import json, os, sys, requests
 from pathlib import Path
 
-try:
-    from core import paths
-except ImportError:
-    _rac = Path(__file__).resolve().parent
-    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
-        _rac = _rac.parent
-    sys.path.insert(0, str(_rac))
-    from core import paths
-
 def log(msg):
     print(f"[ANTI-REPEAT] {msg}")
 
@@ -100,22 +91,18 @@ Chapitres precedents deja ecrits (NE PAS repeter ces idees) :
 
 Ecris le chapitre directement :"""
 
-    response = requests.post("http://localhost:11434/api/generate", json={
-        "model": "mistral",
-        "prompt": prompt,
-        "stream": False,
-        "options": {
-            "temperature": 0.8,
-            "repeat_penalty": 1.4,
-            "repeat_last_n": 256
-        }
-    })
-    return response.json()["response"]
+    try:
+        from llm import appeler_llm
+    except ImportError:
+        sys.path.insert(0, str(Path(__file__).parent.parent))
+        from llm import appeler_llm
+    return appeler_llm(prompt, modele="mistral", temperature=0.8,
+                       options={"repeat_penalty": 1.4, "repeat_last_n": 256})
 
 def main():
     project_path = sys.argv[1]
     pjson = os.path.join(project_path, "project.json")
-    config = lire_json(paths.config_path())
+    config = lire_json("C:\\StudioIA\\config.json")
     data = lire_json(pjson)
 
     sujet    = data["sujet"]
@@ -171,7 +158,7 @@ def main():
         for ch_id in chapitres_a_regenerer:
             ch_info = next((c for c in chapitres if c["id"] == ch_id), None)
             if ch_info:
-                print(f"  - {ch_id} : {ch_info['titre']}")
+                print(f"  - {ch_id} : {ch_info[\"titre\"]}")
         print("=" * 50)
         reponse = input("  Voulez-vous regenerer ces chapitres ? (o/n) : ").strip().lower()
         if reponse != "o":

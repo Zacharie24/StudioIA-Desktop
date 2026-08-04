@@ -1,15 +1,6 @@
 ﻿import json, os, sys, requests
 from pathlib import Path
 
-try:
-    from core import paths
-except ImportError:
-    _rac = Path(__file__).resolve().parent
-    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
-        _rac = _rac.parent
-    sys.path.insert(0, str(_rac))
-    from core import paths
-
 def log(msg):
     print(f"[VERIF-MOTS] {msg}")
 
@@ -24,26 +15,17 @@ def ecrire_json(path, data):
 def appeler_ollama(prompt, modele="mistral"):
     try:
         import sys
-        sys.path.insert(0, str(paths.MODULES_DIR / "brain"))
+        sys.path.insert(0, "C:\\StudioIA-Next\\modules\\brain")
         from model_selector import choisir_meilleur_modele
         modele = choisir_meilleur_modele()
     except:
         pass
-
-    r = requests.post("http://localhost:11434/api/generate", json={
-        "model": modele,
-        "prompt": prompt,
-        "stream": False,
-        "options": {"temperature": 0.8, "repeat_penalty": 1.3}
-    })
-    data = r.json()
-    # Compatibilite avec differents modeles Ollama
-    if "response" in data:
-        return data["response"]
-    elif "message" in data:
-        return data["message"].get("content", "")
-    else:
-        return str(data)
+    try:
+        from llm import appeler_llm
+    except ImportError:
+        sys.path.insert(0, str(Path(__file__).parent.parent))
+        from llm import appeler_llm
+    return appeler_llm(prompt, modele=modele, temperature=0.8)
 
 def completer_chapitre(texte_actuel, mots_manquants, sujet, titre, type_contenu, langue):
     if langue == "en":
@@ -64,7 +46,7 @@ Continue directement :"""
 def main():
     project_path = sys.argv[1]
     pjson = os.path.join(project_path, "project.json")
-    config = lire_json(paths.config_path())
+    config = lire_json("C:\\StudioIA-Next\\config.json")
     data = lire_json(pjson)
 
     duree = data.get("meta", {}).get("duree_cible", config.get("target_duration_minutes", 30))

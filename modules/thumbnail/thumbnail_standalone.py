@@ -10,15 +10,6 @@ except ImportError:
     sys.path.insert(0, str(parent_dir))
     from api_keys import PEXELS_KEY
 
-try:
-    from core import paths
-except ImportError:
-    _rac = Path(__file__).resolve().parent
-    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
-        _rac = _rac.parent
-    sys.path.insert(0, str(_rac))
-    from core import paths
-
 def log(msg):
     print(f"[THUMB] {msg}")
 
@@ -71,13 +62,12 @@ def telecharger_image_fond(mot_cle):
 
 def ollama(prompt):
     try:
-        r = requests.post("http://localhost:11434/api/generate", json={
-            "model": "qwen2.5:7b",
-            "prompt": prompt,
-            "stream": False,
-            "options": {"temperature": 0.7}
-        })
-        return r.json()["response"].strip()
+        try:
+            from llm import appeler_llm
+        except ImportError:
+            sys.path.insert(0, str(Path(__file__).parent.parent))
+            from llm import appeler_llm
+        return appeler_llm(prompt, modele="qwen2.5:7b", temperature=0.7).strip()
     except:
         return ""
 
@@ -115,7 +105,7 @@ def generer_thumbnail_standalone(sujet, langue, type_contenu, style_key, image_f
     MARGE = 70
 
     if output_dir is None:
-        output_dir = str(paths.TEMP_DIR / "thumbnails")
+        output_dir = "C:\\StudioIA\\temp\\thumbnails"
     os.makedirs(output_dir, exist_ok=True)
 
     # Style
@@ -274,7 +264,7 @@ def menu_standalone():
     nb = input("  Nombre [1] : ").strip() or "1"
     nb = int(nb) if nb.isdigit() else 1
 
-    output_dir = str(paths.TEMP_DIR / "thumbnails")
+    output_dir = "C:\\StudioIA\\temp\\thumbnails"
     chemins = []
 
     for i in range(nb):
