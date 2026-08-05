@@ -590,6 +590,64 @@ async def api_projets_nettoyer_post(request: Request, seuil: int = 7):
     return nettoyer_projets_incomplets(paths.PROJECTS_DIR, seuil_jours=seuil, supprimer=True)
 
 
+@app.get("/api/projets/analyser")
+async def api_projets_analyser(seuil: int = 7):
+    """Analyse (dry-run, rapide) : liste tous les projets avec type, etapes
+    manquantes et verdict (a completer / a supprimer / deja termine)."""
+    try:
+        from modules.projets.completer import analyser_tous_projets
+    except Exception as e:
+        return {"succes": False, "erreur": f"module completer indisponible : {e}"}
+    return analyser_tous_projets(seuil_jours=seuil)
+
+
+@app.post("/api/projets/completer")
+async def api_projets_completer(request: Request):
+    """
+    Complete les projets recuperables (script/audio/images/video/vignette
+    manquants), puis supprime (option) ceux qui restent incomplets ET anciens.
+
+    Corps JSON : {"confirmer": true, "seuil": 7, "supprimer_echecs": false}
+    Lance dans un thread en arriere-plan; progression via /api/automation/progress.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not body.get("confirmer"):
+        return {"succes": False,
+                "erreur": "Confirmation requise : envoyez un POST avec {\"confirmer\": true}"}
+    seuil = int(body.get("seuil", 7) or 7)
+    supprimer_echecs = bool(body.get("supprimer_echecs", False))
+
+    try:
+        from modules.automation.progress import get as progress_get
+        if progress_get().get("en_cours"):
+            return {"succes": False,
+                    "erreur": "Une generation est deja en cours. Attends la fin ou relance."}
+
+        from modules.projets.completer import completer_tous_projets
+        from modules.automation.progress import init as progress_init
+
+        progress_init()  # etat propre avant lancement
+
+        def _tache():
+            try:
+                completer_tous_projets(seuil_jours=seuil,
+                                       supprimer_echecs=supprimer_echecs)
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                from modules.automation.progress import fin as progress_fin
+                progress_fin(erreur=str(e))
+
+        threading.Thread(target=_tache, daemon=True).start()
+        return {"succes": True, "demarre": True,
+                "message": "Completion lancee en arriere-plan — voir la barre de progression."}
+    except Exception as e:
+        return {"succes": False, "erreur": str(e)}
+
+
 @app.get("/api/automation/video")
 async def api_automation_video(projet: str = ""):
     """Sert la video generee d'un projet (lecture / telechargement)."""

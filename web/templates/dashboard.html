@@ -218,6 +218,30 @@
             <p style="color:#64748b;">Aucun projet pour l'instant.</p>
             {% endif %}
         </div>
+
+        <div class="section">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem; flex-wrap:wrap; gap:0.5rem;">
+                <h2>Nettoyage &amp; completion des projets</h2>
+                <div>
+                    <button class="btn btn-sm" onclick="analyserProjets(this)">🔍 Analyser les projets</button>
+                    <button class="btn btn-sm" onclick="completerProjets()">✨ Compléter &amp; nettoyer</button>
+                </div>
+            </div>
+            <p class="sub" style="color:#64748b; font-size:0.85rem; margin-bottom:0.8rem;">
+                Analyse les projets incomplets : termine ceux qui sont récupérables (script, audio, images, montage, vignette) et supprime ceux qui ne peuvent pas être finis.
+            </p>
+            <div id="projetsAnalyse" style="margin-top:0.8rem;"></div>
+            <div id="completionProgress" style="display:none; margin-top:0.8rem;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:0.3rem;">
+                    <span id="completionLabel" style="font-size:0.85rem; color:#cbd5e1;">Préparation...</span>
+                    <span id="completionPct" style="font-size:0.85rem; color:#94a3b8;">0%</span>
+                </div>
+                <div style="background:#1e293b; border-radius:6px; height:12px; overflow:hidden;">
+                    <div id="completionBar" style="width:0%; height:100%; background:linear-gradient(90deg,#3b82f6,#22d3ee); transition:width 0.5s;"></div>
+                </div>
+                <pre id="completionLog" style="margin-top:0.6rem; max-height:220px; overflow:auto; font-size:0.75rem; color:#94a3b8; background:#0f172a; padding:0.6rem; border-radius:6px; white-space:pre-wrap;"></pre>
+            </div>
+        </div>
     </div>
 
     <div class="footer">
@@ -315,6 +339,110 @@
                 btn.textContent = 'Rafraîchir';
                 btn.style.opacity = '1';
             }
+        }
+
+        // ---- Nettoyage & completion des projets ----
+        function echapperHtml(s) {
+            return String(s || '').replace(/[&<>"']/g, function(c){
+                return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+            });
+        }
+
+        async function analyserProjets(btn) {
+            const zone = document.getElementById('projetsAnalyse');
+            if (btn) { btn.textContent = 'Analyse en cours...'; btn.style.opacity = '0.5'; }
+            zone.innerHTML = '<p class="sub" style="color:#94a3b8;">Analyse des projets en cours...</p>';
+            try {
+                const r = await fetch('/api/projets/analyser');
+                const d = await r.json();
+                if (!d.succes) { zone.innerHTML = '<p style="color:#f87171;">' + echapperHtml(d.erreur || 'Erreur') + '</p>'; return; }
+                const irrecup = (d.a_supprimer || []).length;
+                let html = `
+                    <div class="status-grid" style="margin-bottom:0.8rem;">
+                        <div class="status-item"><span class="label">Projets analysés</span><span class="badge badge-ok">${d.total || 0}</span></div>
+                        <div class="status-item"><span class="label">À compléter</span><span class="badge badge-warn">${(d.a_completer || []).length}</span></div>
+                        <div class="status-item"><span class="label">Déjà terminés</span><span class="badge badge-ok">${(d.termines || []).length}</span></div>
+                        <div class="status-item"><span class="label">À supprimer</span><span class="badge badge-warn">${irrecup}</span></div>
+                    </div>`;
+                html += '<table><tr><th>Projet</th><th>Type</th><th>Taille</th><th>Verdict</th><th>Étapes manquantes</th></tr>';
+                for (const p of d.projets || []) {
+                    if (!p || p.type === '?') continue; // pas un projet -> hors tableau
+                    const manq = (p.etapes_manquantes || []).slice(0,8).join(', ') || '—';
+                    const verdict = p.raison === 'a_completer' ? '<span class="badge badge-warn">à compléter</span>'
+                        : (p.raison === 'incomplet_irrecuperable' ? '<span class="badge badge-warn">à supprimer</span>'
+                        : '<span class="badge badge-ok">terminé</span>');
+                    html += `<tr><td>${echapperHtml(p.nom).slice(0,25)}</td><td>${echapperHtml(p.type)}</td><td>${p.taille_mo} Mo</td><td>${verdict}</td><td style="font-size:0.8rem;">${echapperHtml(manq)}</td></tr>`;
+                }
+                html += '</table>';
+                zone.innerHTML = html;
+            } catch(e) {
+                zone.innerHTML = '<p style="color:#f87171;">Erreur : ' + echapperHtml(e.message) + '</p>';
+            } finally {
+                if (btn) { btn.textContent = '🔍 Analyser les projets'; btn.style.opacity = '1'; }
+            }
+        }
+
+        async function completerProjets() {
+            if (!confirm("Compléter & nettoyer les projets incomplets ?\n\nAttention : cette opération sollicite Ollama/TTS et peut prendre 10+ minutes par projet. Les projets irrécupérables seront supprimés.")) return;
+            const zone = document.getElementById('completionProgress');
+            zone.style.display = 'block';
+            const log = document.getElementById('completionLog');
+            log.textContent = 'Lancement de la complétion...';
+            try {
+                const r = await fetch('/api/projets/completer', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({confirmer: true, seuil: 7, supprimer_echecs: true})
+                });
+                const d = await r.json();
+                if (!d.succes) { log.textContent = '❌ ' + (d.erreur || 'Erreur'); return; }
+                pollCompletion();
+            } catch(e) {
+                log.textContent = '❌ ' + e.message;
+            }
+        }
+
+        let pollTimer = null;
+        function pollCompletion() {
+            if (pollTimer) clearInterval(pollTimer);
+            pollTimer = setInterval(async function() {
+                try {
+                    const r = await fetch('/api/automation/progress');
+                    const d = await r.json();
+                    const zone = document.getElementById('completionProgress');
+                    const bar = document.getElementById('completionBar');
+                    const pct = document.getElementById('completionPct');
+                    const label = document.getElementById('completionLabel');
+                    const log = document.getElementById('completionLog');
+                    if (!zone || zone.style.display === 'none') { clearInterval(pollTimer); return; }
+                    if (d.pct !== undefined) bar.style.width = (d.pct || 0) + '%';
+                    if (d.pct !== undefined) pct.textContent = (d.pct || 0) + '%';
+                    if (d.message) label.textContent = d.message;
+                    if (d.detail) log.textContent = d.detail;
+                    if (!d.en_cours) {
+                        clearInterval(pollTimer);
+                        bar.style.width = '100%';
+                        pct.textContent = '100%';
+                        if (d.erreur) {
+                            log.textContent = '❌ ' + d.erreur;
+                        } else {
+                            const res = d.resultat || {};
+                            const lignes = [];
+                            lignes.push('✅ Complétion terminée.');
+                            lignes.push('   Terminés  : ' + (res.completes || []).length + ((res.completes || []).length ? ' — ' + res.completes.join(', ') : ''));
+                            lignes.push('   Échecs    : ' + (res.echecs || []).length + ((res.echecs || []).length ? ' — ' + res.echecs.join(', ') : ''));
+                            lignes.push('   Supprimés : ' + (res.supprimes || []).length + ((res.supprimes || []).length ? ' — ' + res.supprimes.join(', ') : ''));
+                            log.textContent = lignes.join('\n');
+                            label.textContent = 'Terminé';
+                            analyserProjets(); // rafraîchit le tableau d'analyse
+                        }
+                    }
+                } catch(e) {
+                    clearInterval(pollTimer);
+                    const l = document.getElementById('completionLog');
+                    if (l) l.textContent = '❌ ' + e.message;
+                }
+            }, 2000);
         }
 
         document.addEventListener('DOMContentLoaded', chargerSurveillance);
