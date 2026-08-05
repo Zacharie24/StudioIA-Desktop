@@ -57,6 +57,50 @@ async def dashboard(request: Request):
     except:
         diagnostic = None
 
+    # ---- État des services EN TEMPS RÉEL ----
+    # Le template lit diagnostic.etapes.{ollama,pexels,youtube,config}. Ce
+    # fichier peut être absent (aucun diagnostic jamais lancé) ou obsolète :
+    # on reconstruit donc ces 4 entrées à la volée.
+    # - Ollama : test local rapide via core/ollama (127.0.0.1, évite la
+    #   résolution IPv6 lente de "localhost").
+    # - Pexels / YouTube : testeurs du module diagnostic (échec immédiat si
+    #   aucune clé configurée ; sinon appel réseau réel).
+    # - config : lecture directe de config.json.
+    try:
+        from modules import diagnostic as diag
+        from core import services
+        cfg = paths.lire_config()
+        svc = services.etat_services()["ollama"]
+        etapes_live = {
+            "ollama": {"ok": svc["actif"], "modeles": svc["modeles"]},
+            "pexels": diag._tester_pexels(cfg.get("pexels_api_key", "")),
+            "youtube": diag._tester_youtube(),
+            "config": {
+                "profil_actif": cfg.get("profil_actif", "prayer"),
+                "mode_visuel": cfg.get("mode_visuel", "intelligent"),
+                "mode": cfg.get("mode", "local"),
+                "low_resource": cfg.get("low_resource", True),
+                "providers": cfg.get("providers", {"plan": "local", "chapitre": "local"}),
+            },
+        }
+        if diagnostic is None:
+            # Aucun diagnostic sauvegardé : structure minimale pour que les
+            # cartes du haut ne cassent pas (score 0, projets 0).
+            # Les clés ci-dessous correspondent à celles lues par dashboard.html
+            # (diagnostic.etapes.profil.nom, .projets.total, .suggestions…).
+            diagnostic = {
+                "score_pct": 0, "score": 0, "score_max": 0,
+                "etapes": {
+                    "projets": {"total": 0, "termines": 0, "en_cours": 0},
+                    "profil": {"ok": True, "nom": cfg.get("profil_actif", "prayer"), "regles": 0},
+                },
+                "suggestions": [],
+            }
+        diagnostic.setdefault("etapes", {})
+        diagnostic["etapes"].update(etapes_live)
+    except Exception as _e:
+        print(f"[web.main] État des services temps réel indisponible : {_e}")
+
     # Stats rapides
     projects_path = paths.PROJECTS_DIR
     projets = []
