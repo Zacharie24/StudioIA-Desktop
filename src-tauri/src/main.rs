@@ -31,6 +31,7 @@ use tauri::{
     AppHandle, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
 use tauri_plugin_updater::UpdaterExt;
+use tauri_plugin_dialog::DialogExt;
 
 const BACKEND_HOST: &str = "127.0.0.1";
 const BACKEND_PORT: u16 = 8080;
@@ -137,6 +138,39 @@ fn backend_url() -> tauri::Url {
 }
 
 // ---------------------------------------------------------------------------
+// Données utilisateur (isolées du dossier d'app) + mémorisation « Plus tard »
+// ---------------------------------------------------------------------------
+/// Dossier des données utilisateur : %USERPROFILE%\StudioIA, sauf surcharge via
+/// STUDIOIA_DATA_DIR (identique à core/paths.py du backend).
+fn user_data_dir() -> PathBuf {
+    if let Ok(p) = std::env::var("STUDIOIA_DATA_DIR") {
+        if !p.is_empty() {
+            return PathBuf::from(p);
+        }
+    }
+    if let Ok(profile) = std::env::var("USERPROFILE") {
+        return PathBuf::from(profile).join(DEFAULT_DATA_DIR_NAME);
+    }
+    std::env::current_dir().unwrap_or_default()
+}
+
+const UPDATER_SEEN_FILE: &str = "updater_seen.txt";
+
+/// Version déjà refusée par l'utilisateur (« Plus tard ») : on ne la re-propose
+/// pas à chaque lancement.
+fn last_prompted_version() -> Option<String> {
+    let content = std::fs::read_to_string(user_data_dir().join(UPDATER_SEEN_FILE)).ok()?;
+    let v = content.trim().to_string();
+    if v.is_empty() { None } else { Some(v) }
+}
+
+fn remember_prompted_version(version: &str) {
+    let dir = user_data_dir();
+    let _ = std::fs::create_dir_all(&dir);
+    let _ = std::fs::write(dir.join(UPDATER_SEEN_FILE), version);
+}
+
+// ---------------------------------------------------------------------------
 // État du shell (pour tuer le backend à la sortie)
 // ---------------------------------------------------------------------------
 struct BackendState(Mutex<Option<Child>>);
@@ -213,15 +247,15 @@ fn build_tray(app: &tauri::App) -> tauri::Result<tauri::tray::TrayIcon> {
 // ---------------------------------------------------------------------------
 // Mise à jour automatique (tauri-plugin-updater + GitHub Releases)
 // ---------------------------------------------------------------------------
-// Vérifie une version au démarrage (arrière-plan) et, si dispo, télécharge
-// l'installateur signé 'StudioIA-Setup.exe', le lance en silencieux puis quitte
-// l'app pour laisser l'installateur remplacer le shell et les fichiers. Ne
-// touche JAMAIS aux données utilisateur (%USERPROFILE%\StudioIA isolé) ni aux
-// modèles Ollama. Silencieux en cas d'échec (offline / pas de release / refus).
+// Vérifie une version au démarrage (arrière-plan), DEMANDE à l'utilisateur
+// (« Oui » = installer / « Non » = plus tard, mémorisé par version), puis si
+// confirmé télécharge l'installateur signé 'StudioIA-Setup.exe', le lance en
+// silencieux et quitte l'app pour laisser l'installateur remplacer le shell.
+// Ne touche JAMAIS aux données utilisateur (%USERPROFILE%\StudioIA isolé) ni
+// aux modèles Ollama. Échec silencieux (offline / pas de release / refus).
 fn spawn_update_check(handle: AppHandle) {
     tauri::async_runtime::spawn(async move {
-        // Laisse le backend démarrer (le dashboard s'afficher) avant d'engager
-        // un éventuel téléchargement.
+        // Laisse le backend démarrer (le dashboard s'afficher) avant de demander.
         std::thread::sleep(Duration::from_secs(10));
 
         let Ok(updater) = handle.updater() else {
@@ -230,26 +264,65 @@ fn spawn_update_check(handle: AppHandle) {
         let Ok(Some(update)) = updater.check().await else {
             return; // à jour, ou réseau indisponible
         };
-        eprintln!("[updater] version disponible : {}", update.version);
+        let version = update.version.clone();
 
-        // download() renvoie déjà les octets VÉRIFIÉS par signature (pubkey).
-        match update.download(|_, _| {}, || {}).await {
-            Ok(bytes) => {
-                // Écrit l'installateur Inno Setup dans un fichier temporaire,
-                // puis le lance en silencieux (aucune dialog box).
-                let setup = std::env::temp_dir().join("StudioIA-Setup.exe");
-                if std::fs::write(&setup, &bytes).is_ok() {
-                    let _ = Command::new(&setup)
-                        .args(["/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-"])
-                        .spawn();
-                }
-                // Quitte l'app pour laisser l'installateur remplacer l'exe
-                // (le dossier d'install est réinscriptible, sans admin).
-                let _ = handle.exit(0);
-            }
-            Err(e) => eprintln!("[updater] échec du téléchargement : {e}"),
+        // Ne pas re-proposer une version déjà refusée (« Plus tard »).
+        if last_prompted_version().as_deref() == Some(version.as_str()) {
+            return;
         }
+
+        eprintln!("[updater] version disponible : {version}");
+
+        // DEMANDE à l'utilisateur avant d'installer :
+        //   Oui  = télécharger + installer, puis quitter l'app.
+        //   Non  = « Plus tard » : on mémorise la version, on ne re-demandera pas.
+        let h = handle.clone();
+        handle
+            .dialog()
+            .message(format!(
+                "Une mise a jour est disponible : version {version}.\n\nInstaller maintenant ?"
+            ))
+            .title("StudioIA - Mise a jour disponible")
+            .kind(tauri_plugin_dialog::MessageDialogKind::Info)
+            .buttons(tauri_plugin_dialog::MessageDialogButtons::YesNo)
+            .show(move |pressed_yes| {
+                if pressed_yes {
+                    let h2 = h.clone();
+                    tauri::async_runtime::spawn(async move {
+                        install_update(h2).await;
+                    });
+                } else {
+                    remember_prompted_version(&version);
+                }
+            });
     });
+}
+
+/// Télécharge l'installateur signé (octets VÉRIFIÉS par la pubkey), le lance en
+/// silencieux puis quitte l'app pour laisser l'installateur remplacer le shell.
+/// Ne touche JAMAIS aux données utilisateur (%USERPROFILE%\StudioIA isolé) ni
+/// aux modèles Ollama. Échec silencieux (offline / refus / réseau).
+async fn install_update(handle: AppHandle) {
+    let Ok(updater) = handle.updater() else {
+        return;
+    };
+    let Ok(Some(update)) = updater.check().await else {
+        return;
+    };
+    eprintln!("[updater] installation de {}", update.version);
+
+    match update.download(|_, _| {}, || {}).await {
+        Ok(bytes) => {
+            let setup = std::env::temp_dir().join("StudioIA-Setup.exe");
+            if std::fs::write(&setup, &bytes).is_ok() {
+                let _ = Command::new(&setup)
+                    .args(["/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-"])
+                    .spawn();
+            }
+            let _ = handle.exit(0);
+        }
+        Err(e) => eprintln!("[updater] echec du telechargement : {e}"),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -260,6 +333,7 @@ fn main() {
         .manage(BackendState(Mutex::new(None)))
         .manage(TrayState(Mutex::new(None)))
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let root = app_root();
             let handle = app.handle().clone();
