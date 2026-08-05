@@ -577,6 +577,38 @@ def completer_tous_projets(seuil_jours=7, supprimer_echecs=False):
     }
 
 
+def supprimer_projet(nom):
+    """Supprime UN SEUL projet, choisi explicitement par l'utilisateur.
+
+    Memes garde-fous que cleanup.py (non modifie) : jamais hors de
+    projects_dir, jamais un non-projet, jamais un projet termine/publie,
+    jamais un projet avec video finale.
+    """
+    from modules.projets import cleanup
+
+    projects_dir = paths.PROJECTS_DIR
+    projects_root = projects_dir.resolve()
+    dossier = (projects_dir / nom).resolve()
+    if not str(dossier).startswith(str(projects_root)):
+        return {"succes": False, "erreur": "projet invalide (hors du dossier projets)"}
+    if not dossier.exists() or not dossier.is_dir():
+        return {"succes": False, "erreur": f"projet introuvable : {nom}"}
+    if not (dossier / "project.json").exists() and not (dossier / "plan.json").exists():
+        return {"succes": False,
+                "erreur": f"'{nom}' n'est pas un projet StudioIA (pas de project.json/plan.json)"}
+
+    base = cleanup.analyser_projet(dossier, 0)  # seuil 0 : l'age ne bloque pas un choix explicite
+    if base.get("raison") in ("statut_termine", "video_presente", "pas_un_projet"):
+        return {"succes": False,
+                "erreur": f"'{nom}' est {base.get('raison')} : suppression refusee (securite)"}
+
+    try:
+        shutil.rmtree(str(dossier))
+    except Exception as e:
+        return {"succes": False, "erreur": f"suppression impossible : {e}"}
+    return {"succes": True, "supprime": nom}
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------

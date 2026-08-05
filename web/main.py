@@ -648,6 +648,84 @@ async def api_projets_completer(request: Request):
         return {"succes": False, "erreur": str(e)}
 
 
+@app.post("/api/projets/completer/un")
+async def api_projets_completer_un(request: Request):
+    """Complete UN SEUL projet (choisi par l'utilisateur) en arriere-plan.
+
+    Corps JSON : {"nom": "dossier_projet", "confirmer": true}
+    Progression via /api/automation/progress (un seul traitement a la fois).
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    nom = (body.get("nom") or "").strip()
+    if not body.get("confirmer"):
+        return {"succes": False,
+                "erreur": "Confirmation requise : envoyez un POST avec {\"confirmer\": true}"}
+    if not nom:
+        return {"succes": False, "erreur": "Parametre 'nom' requis"}
+
+    try:
+        from modules.automation.progress import get as progress_get
+        if progress_get().get("en_cours"):
+            return {"succes": False,
+                    "erreur": "Une generation est deja en cours. Attends la fin ou relance."}
+
+        from core import paths
+        dossier = (paths.PROJECTS_DIR / nom).resolve()
+        if not str(dossier).startswith(str(paths.PROJECTS_DIR.resolve())) or not dossier.is_dir():
+            return {"succes": False, "erreur": f"projet introuvable : {nom}"}
+
+        from modules.projets.completer import completer_projet, _lire_config
+        from modules.automation.progress import init as progress_init
+        from modules.automation.progress import terminer_etape as progress_terminer
+        from modules.automation.progress import fin as progress_fin
+
+        config = _lire_config()
+        progress_init()  # etat propre avant lancement
+
+        def _tache():
+            try:
+                res = completer_projet(dossier, config)
+                etat = "OK" if res.get("fait") else "ECHEC"
+                progress_terminer("completer", "termine", f"Projet {nom} : {etat}")
+                progress_fin(resultat=res)
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                progress_fin(erreur=str(e))
+
+        threading.Thread(target=_tache, daemon=True).start()
+        return {"succes": True, "demarre": True, "projet": nom,
+                "message": f"Completion de « {nom} » lancee en arriere-plan."}
+    except Exception as e:
+        return {"succes": False, "erreur": str(e)}
+
+
+@app.post("/api/projets/supprimer")
+async def api_projets_supprimer(request: Request):
+    """Supprime UN SEUL projet, choisi explicitement (garde-fous cleanup.py).
+
+    Corps JSON : {"nom": "dossier_projet", "confirmer": true}
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    nom = (body.get("nom") or "").strip()
+    if not body.get("confirmer"):
+        return {"succes": False,
+                "erreur": "Confirmation requise : envoyez un POST avec {\"confirmer\": true}"}
+    if not nom:
+        return {"succes": False, "erreur": "Parametre 'nom' requis"}
+    try:
+        from modules.projets.completer import supprimer_projet
+        return supprimer_projet(nom)
+    except Exception as e:
+        return {"succes": False, "erreur": str(e)}
+
+
 @app.get("/api/automation/video")
 async def api_automation_video(projet: str = ""):
     """Sert la video generee d'un projet (lecture / telechargement)."""

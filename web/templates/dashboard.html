@@ -222,14 +222,12 @@
         <div class="section">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem; flex-wrap:wrap; gap:0.5rem;">
                 <h2>Nettoyage &amp; completion des projets</h2>
-                <div>
-                    <button class="btn btn-sm" onclick="analyserProjets(this)">🔍 Analyser les projets</button>
-                    <button class="btn btn-sm" onclick="completerProjets()">✨ Compléter &amp; nettoyer</button>
-                </div>
+                <button class="btn btn-sm" onclick="analyserProjets(this)">🔍 Analyser les projets</button>
             </div>
             <p class="sub" style="color:#64748b; font-size:0.85rem; margin-bottom:0.8rem;">
-                Analyse les projets incomplets : termine ceux qui sont récupérables (script, audio, images, montage, vignette) et supprime ceux qui ne peuvent pas être finis.
+                Analyse d'abord, puis choisis toi-même, projet par projet, ce qui doit être <b>complété</b> (étapes manquantes) ou <b>supprimé</b>.
             </p>
+            <div id="actionMsg" style="margin-bottom:0.5rem;"></div>
             <div id="projetsAnalyse" style="margin-top:0.8rem;"></div>
             <div id="completionProgress" style="display:none; margin-top:0.8rem;">
                 <div style="display:flex; justify-content:space-between; margin-bottom:0.3rem;">
@@ -364,14 +362,43 @@
                         <div class="status-item"><span class="label">Déjà terminés</span><span class="badge badge-ok">${(d.termines || []).length}</span></div>
                         <div class="status-item"><span class="label">À supprimer</span><span class="badge badge-warn">${irrecup}</span></div>
                     </div>`;
-                html += '<table><tr><th>Projet</th><th>Type</th><th>Taille</th><th>Verdict</th><th>Étapes manquantes</th></tr>';
+                const FINS = ['termine','terminé','publie','publié','done','completed','finished'];
+                html += '<table><tr><th>Projet</th><th>Type</th><th>Statut</th><th>Étapes déjà faites</th><th>Reste à faire</th><th>Taille</th><th>Action</th></tr>';
                 for (const p of d.projets || []) {
                     if (!p || p.type === '?') continue; // pas un projet -> hors tableau
-                    const manq = (p.etapes_manquantes || []).slice(0,8).join(', ') || '—';
-                    const verdict = p.raison === 'a_completer' ? '<span class="badge badge-warn">à compléter</span>'
-                        : (p.raison === 'incomplet_irrecuperable' ? '<span class="badge badge-warn">à supprimer</span>'
-                        : '<span class="badge badge-ok">terminé</span>');
-                    html += `<tr><td>${echapperHtml(p.nom).slice(0,25)}</td><td>${echapperHtml(p.type)}</td><td>${p.taille_mo} Mo</td><td>${verdict}</td><td style="font-size:0.8rem;">${echapperHtml(manq)}</td></tr>`;
+                    // etapes deja faites
+                    let faits = [];
+                    if (p.type === 'shorts') {
+                        const e = p.etapes || {};
+                        faits.push('shorts ' + (e.shorts_ok || 0) + '/' + (e.total || 0));
+                    } else {
+                        for (const k of Object.keys(p.etapes || {})) {
+                            const v = String((p.etapes || {})[k] || '').toLowerCase();
+                            if (FINS.indexOf(v) !== -1) faits.push(k);
+                        }
+                    }
+                    const manq = (p.etapes_manquantes || []).join(', ') || '—';
+                    const verdict = p.raison === 'a_completer' ? 'à compléter'
+                        : (p.raison === 'incomplet_irrecuperable' ? 'à supprimer' : 'terminé');
+                    const badge = (p.raison === 'a_completer' || p.raison === 'incomplet_irrecuperable')
+                        ? 'badge-warn' : 'badge-ok';
+                    const nom = echapperHtml(p.nom);
+                    let actions = '—';
+                    if (p.raison === 'a_completer') {
+                        actions += `<button class="btn btn-sm" onclick="completerUnProjet('${p.nom}')">✨ Compléter</button> `;
+                        actions += `<button class="btn btn-sm" onclick="supprimerUnProjet('${p.nom}')" style="color:#f87171;">🗑 Supprimer</button>`;
+                    } else if (p.raison === 'incomplet_irrecuperable') {
+                        actions += `<button class="btn btn-sm" onclick="supprimerUnProjet('${p.nom}')" style="color:#f87171;">🗑 Supprimer</button>`;
+                    }
+                    html += `<tr>
+                        <td>${nom.slice(0,28)}</td>
+                        <td>${echapperHtml(p.type)}</td>
+                        <td><span class="badge ${badge}">${echapperHtml(p.statut || '—')}</span> <span style="font-size:0.75rem;color:#94a3b8;">(${verdict})</span></td>
+                        <td style="font-size:0.8rem;color:#86efac;">${echapperHtml(faits.join(', ') || '—')}</td>
+                        <td style="font-size:0.8rem;color:#fbbf24;">${echapperHtml(manq)}</td>
+                        <td>${p.taille_mo} Mo</td>
+                        <td>${actions}</td>
+                    </tr>`;
                 }
                 html += '</table>';
                 zone.innerHTML = html;
@@ -382,28 +409,54 @@
             }
         }
 
-        async function completerProjets() {
-            if (!confirm("Compléter & nettoyer les projets incomplets ?\n\nAttention : cette opération sollicite Ollama/TTS et peut prendre 10+ minutes par projet. Les projets irrécupérables seront supprimés.")) return;
+        function msgAction(html) {
+            const m = document.getElementById('actionMsg');
+            if (m) m.innerHTML = html;
+        }
+
+        async function completerUnProjet(nom) {
+            if (!confirm('Compléter le projet « ' + nom + ' » ?\n\nLes étapes manquantes seront générées (Ollama/TTS, plusieurs minutes).')) return;
+            msgAction('');
             const zone = document.getElementById('completionProgress');
             zone.style.display = 'block';
-            const log = document.getElementById('completionLog');
-            log.textContent = 'Lancement de la complétion...';
+            document.getElementById('completionLog').textContent = 'Lancement de la complétion de « ' + nom + ' »...';
             try {
-                const r = await fetch('/api/projets/completer', {
+                const r = await fetch('/api/projets/completer/un', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({confirmer: true, seuil: 7, supprimer_echecs: true})
+                    body: JSON.stringify({nom: nom, confirmer: true})
                 });
                 const d = await r.json();
-                if (!d.succes) { log.textContent = '❌ ' + (d.erreur || 'Erreur'); return; }
-                pollCompletion();
+                if (!d.succes) { document.getElementById('completionLog').textContent = '❌ ' + (d.erreur || 'Erreur'); return; }
+                pollCompletion(nom);
             } catch(e) {
-                log.textContent = '❌ ' + e.message;
+                document.getElementById('completionLog').textContent = '❌ ' + e.message;
+            }
+        }
+
+        async function supprimerUnProjet(nom) {
+            if (!confirm('Supprimer DÉFINITIVEMENT le projet « ' + nom + ' » ?\n\nCette action est irréversible.')) return;
+            msgAction('');
+            try {
+                const r = await fetch('/api/projets/supprimer', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({nom: nom, confirmer: true})
+                });
+                const d = await r.json();
+                if (d.succes) {
+                    msgAction('<p style="color:#86efac;">✔ Projet « ' + echapperHtml(nom) + ' » supprimé.</p>');
+                } else {
+                    msgAction('<p style="color:#f87171;">❌ ' + echapperHtml(d.erreur || 'Erreur') + '</p>');
+                }
+                analyserProjets(); // rafraîchit le tableau
+            } catch(e) {
+                msgAction('<p style="color:#f87171;">❌ ' + echapperHtml(e.message) + '</p>');
             }
         }
 
         let pollTimer = null;
-        function pollCompletion() {
+        function pollCompletion(nom) {
             if (pollTimer) clearInterval(pollTimer);
             pollTimer = setInterval(async function() {
                 try {
@@ -428,10 +481,17 @@
                         } else {
                             const res = d.resultat || {};
                             const lignes = [];
-                            lignes.push('✅ Complétion terminée.');
-                            lignes.push('   Terminés  : ' + (res.completes || []).length + ((res.completes || []).length ? ' — ' + res.completes.join(', ') : ''));
-                            lignes.push('   Échecs    : ' + (res.echecs || []).length + ((res.echecs || []).length ? ' — ' + res.echecs.join(', ') : ''));
-                            lignes.push('   Supprimés : ' + (res.supprimes || []).length + ((res.supprimes || []).length ? ' — ' + res.supprimes.join(', ') : ''));
+                            if (res.fait) {
+                                lignes.push('✅ « ' + (nom || '') + ' » complété.');
+                                if (res.etapes_terminees && res.etapes_terminees.length) {
+                                    lignes.push('   Fait : ' + res.etapes_terminees.join(', '));
+                                }
+                            } else {
+                                lignes.push('⚠️ « ' + (nom || '') + ' » : échec (voir erreurs).');
+                            }
+                            if (res.erreurs && res.erreurs.length) {
+                                lignes.push('   Erreurs : ' + res.erreurs.join(' ; '));
+                            }
                             log.textContent = lignes.join('\n');
                             label.textContent = 'Terminé';
                             analyserProjets(); // rafraîchit le tableau d'analyse
