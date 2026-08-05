@@ -187,7 +187,14 @@ def analyser_projet(dossier, seuil_jours=7):
 def analyser_tous_projets(seuil_jours=7):
     """Rapport complet (dry-run) sur tous les projets du dossier projets."""
     projects_dir = paths.PROJECTS_DIR
-    if not projects_dir.exists() or not projects_dir.is_dir():
+    # Premier lancement : un dossier projets absent n'est pas une erreur, c'est
+    # simplement « aucun projet ». On le crée pour que le reste fonctionne.
+    try:
+        projects_dir.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        return {"succes": False, "erreur": f"impossible de creer le dossier projets : {projects_dir}",
+                "projets": []}
+    if not projects_dir.is_dir():
         return {"succes": False, "erreur": f"dossier projets introuvable : {projects_dir}",
                 "projets": []}
 
