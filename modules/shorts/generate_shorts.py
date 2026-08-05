@@ -1,6 +1,15 @@
 import json, os, sys, requests, subprocess, random, shutil, re, time
 from pathlib import Path
 
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent
+    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
+        _rac = _rac.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
+
 # Import voix_config - support pour module et mode direct
 try:
     from ..tts.voix_config import VOIX_MAP_SHORTS
@@ -15,12 +24,23 @@ try:
     from ..audio.composia import generer_musique_fond, preparer_audio_pour_video
 except (ImportError, ValueError):
     # En mode direct
-    composia_path = Path(r"C:\\StudioIA-Next\modules\audio")
+    composia_path = paths.MODULES_DIR / "audio"
     sys.path.insert(0, str(composia_path))
     from composia import generer_musique_fond, preparer_audio_pour_video
 
-FFMPEG = "C:\\StudioIA\\tools\\ffmpeg\\ffmpeg.exe"
-MUSIC_DIR = "C:\\StudioIA\\assets\\music"
+FFMPEG = str(paths.FFMPEG)
+MUSIC_DIR = str(paths.MUSIC_DIR)
+
+# Encodage robuste de la sortie du processus : le pack TTS et les logs peuvent
+# contenir '✓' (U+2713) / '⚠' (U+26A0) qui lèvent UnicodeEncodeError en cp1252
+# selon la console du backend (mode installé ou console cmd). On force UTF-8
+# (errors=replace) pour que la génération ne crashe jamais à l'impression.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 
 def log(msg):
     print(f"[SHORTS] {msg}")
@@ -203,12 +223,20 @@ COMMENCE DIRECTEMENT PAR LE SUJET — JAMAIS par une phrase d'introduction ou de
     return ollama(prompt)
 
 def _run_tts_script(texte, output_wav, moteur, voix, nom_fichier="short_audio"):
-    """Execute une generation TTS via le venv C:\\tts-pentest. Retourne True si OK."""
-    venv_python = "C:\\tts-pentest\\venv\\Scripts\\python.exe"
+    """Execute une generation TTS via le venv du pack XTTS (résolu par core/paths).
+    PYTHONIOENCODING=utf-8 : le pack imprime '✓' (U+2713) en console, ce qui
+    lève UnicodeEncodeError en cp1252 sur Windows → on force l'encodage UTF-8
+    du sous-processus pour que la génération aboutisse.
+    Retourne True si le .wav a bien été produit."""
+    tts_root = paths.tts_path()
+    if not tts_root:
+        log("Pack TTS (XTTS) absent pour ce short — abandon TTS local")
+        return False
+    venv_python = os.path.join(tts_root, "venv", "Scripts", "python.exe")
 
     script = f"""
 import sys
-sys.path.insert(0, r"C:\\tts-pentest")
+sys.path.insert(0, r"{tts_root}")
 from tts_total import initialiser_projet, generer_long_texte
 import shutil, os
 
@@ -229,8 +257,12 @@ else:
     with open(script_path, "w", encoding="utf-8") as f:
         f.write(script)
 
+    env = dict(os.environ)
+    env["PYTHONIOENCODING"] = "utf-8"
+
     try:
-        subprocess.run([venv_python, script_path], cwd="C:\\tts-pentest", capture_output=False)
+        subprocess.run([venv_python, script_path], cwd=tts_root,
+                       capture_output=False, env=env)
     except Exception:
         pass
     finally:
@@ -388,7 +420,7 @@ def generer_musique_fond_projet(shorts_path, sujet, type_contenu, config):
 
     # Étape 2: Fallback vers musique existante
     log("  Fallback vers musique existante...")
-    music_file = choisir_musique(config.get("music_path", ""))
+    music_file = choisir_musique(str(paths.MUSIC_DIR))
     if music_file:
         # Copier la musique dans le dossier audio du projet
         import shutil
@@ -419,7 +451,7 @@ def ajouter_musique(video_path, music_path, output_path, music_volume=0.15):
 
 def lire_video_config(project_path=None):
     # Pour les shorts, on utilise la config globale
-    cfg_path = "C:\\StudioIA\\config_video.json"
+    cfg_path = str(paths.chemin_app("config_video.json"))
     if os.path.exists(cfg_path):
         with open(cfg_path, "r", encoding="utf-8-sig") as f:
             return json.load(f)
@@ -520,7 +552,7 @@ def creer_video_short(audio_path, image_path, output_path, titre, config, shorts
             log(f"  Musique de fond: {musique_composia.name}")
         else:
             # Fallback vers musique_path dans config
-            music_file = choisir_musique(config.get("music_path", ""))
+            music_file = choisir_musique(str(paths.MUSIC_DIR))
 
     # Constructeur de commande FFmpeg
     cmd = [
@@ -614,7 +646,7 @@ def generer_thumbnail_short(titre, output_path, style_couleur=(255,215,0)):
         return False
 
 def main():
-    config = lire_json("C:\\StudioIA\\config.json")
+    config = lire_json(str(paths.config_path()))
 
     # Detecter si on reprend un projet existant (chemin passe en argument)
     project_path = sys.argv[1] if len(sys.argv) > 1 else None

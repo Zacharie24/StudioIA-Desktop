@@ -69,7 +69,7 @@ def _config_llm() -> tuple:
 # ── Appel prompt → texte (anciennement /api/generate) ────────────────────────
 
 def appeler_llm(prompt: str, modele: str = None, temperature: float = 0.8,
-                max_tokens: int = 512, timeout: int = 60,
+                max_tokens: int = 512, timeout: int = 600,
                 options: dict = None) -> str:
     """
     Appel LLM unifié (prompt → texte brut).
@@ -78,6 +78,10 @@ def appeler_llm(prompt: str, modele: str = None, temperature: float = 0.8,
     - OmniRoute : POST /v1/chat/completions (OpenAI), même résultat.
 
     Retourne le texte généré. En cas d'échec OmniRoute → repli automatique Ollama.
+
+    Timeout par défaut 600 s : les modèles locaux (Ollama) sur petit PC peuvent
+    mettre plusieurs minutes pour générer un long script. L'ancien code n'avait
+    aucun timeout — 600 s est généreux tout en évitant les blocages infinis.
     """
     fournisseur, modele_defaut = _config_llm()
     if modele is None:
@@ -130,7 +134,7 @@ def _appeler_omniroute_generate(prompt: str, modele: str, temperature: float,
 # ── Appel chat messages → texte (anciennement /api/chat) ─────────────────────
 
 def appeler_chat_llm(messages: list, modele: str = None, temperature: float = 0.8,
-                     max_tokens: int = 2048, timeout: int = 120,
+                     max_tokens: int = 2048, timeout: int = 600,
                      format_json: bool = False) -> str:
     """
     Appel LLM unifié en mode chat (liste de messages → texte).
@@ -139,6 +143,9 @@ def appeler_chat_llm(messages: list, modele: str = None, temperature: float = 0.
     - OmniRoute : POST /v1/chat/completions (OpenAI), response_format si format_json.
 
     Retourne le texte de la réponse. Repli automatique Ollama si OmniRoute échoue.
+
+    Timeout par défaut 600 s (même raison que appeler_llm : générations locales
+    lentes sur petit PC).
     """
     fournisseur, modele_defaut = _config_llm()
     if modele is None:

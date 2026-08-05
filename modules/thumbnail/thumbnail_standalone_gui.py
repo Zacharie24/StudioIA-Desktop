@@ -14,13 +14,22 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 from datetime import datetime
 
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent
+    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
+        _rac = _rac.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
+
 # Paths
-OUTPUT_DIR = "C:\\StudioIA\\temp\\thumbnails"
-CONFIG_PATH = "C:\\StudioIA\\config.json"
-ASSETS_PATH = "C:\\StudioIA\\assets"
+OUTPUT_DIR = str(paths.TEMP_DIR / "thumbnails")
+CONFIG_PATH = str(paths.config_path())
+ASSETS_PATH = str(paths.ASSETS_DIR)
 
 # Import modules
-sys.path.insert(0, "C:\\StudioIA\\modules")
+sys.path.insert(0, str(paths.MODULES_DIR))
 from api_keys import PEXELS_KEY
 
 # Styles

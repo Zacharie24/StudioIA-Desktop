@@ -1,6 +1,15 @@
 ﻿import json, os, sys, requests, re
 from pathlib import Path
 
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent
+    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
+        _rac = _rac.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
+
 def log(msg):
     print(f"[NOM] {msg}")
 
@@ -14,7 +23,7 @@ def ecrire_json(path, data):
 
 def generer_nom_court(sujet, langue="fr"):
     try:
-        sys.path.insert(0, "C:\\StudioIA\\modules\\brain")
+        sys.path.insert(0, str(paths.MODULES_DIR / "brain"))
         from model_selector import choisir_meilleur_modele
         modele = choisir_meilleur_modele()
     except:

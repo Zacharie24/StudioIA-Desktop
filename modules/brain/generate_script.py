@@ -1,7 +1,14 @@
 ﻿import json, sys, os, requests, logging
 
+try:
+    from core import paths
+except ImportError:
+    _rac = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    sys.path.insert(0, _rac)
+    from core import paths
+
 # Import des modules web research et IA online
-sys.path.insert(0, "C:\\StudioIA-Next\\modules\\brain")
+sys.path.insert(0, str(paths.MODULES_DIR / "brain"))
 from web_research import enrichir_prompt_avec_recherche, est_connecte_internet
 from ia_online import generer_prompt_online
 from spelling_corrector import corriger_chapitre, verifier_chapitre
@@ -388,7 +395,7 @@ Reponds UNIQUEMENT avec un JSON valide :
 def choisir_providers():
     """Renvoie les providers à utiliser selon config.json"""
     try:
-        config = lire_json("C:\\StudioIA-Next\\config.json")
+        config = lire_json(str(paths.config_path()))
         return config.get("providers", {
             "plan": "local",           # local, huggingface, ou online (tout en ligne)
             "chapitre": "local"        # local, huggingface, ou online (tout en ligne)
@@ -400,7 +407,7 @@ def choisir_providers():
 def activer_recherche_web():
     """Vérifie si la recherche web est activée dans config.json"""
     try:
-        config = lire_json("C:\\StudioIA-Next\\config.json")
+        config = lire_json(str(paths.config_path()))
         return config.get("web_research", False)
     except:
         return False
@@ -681,7 +688,7 @@ def calculer_mots_par_chapitre(duree_minutes, nb_chapitres):
 
 def main():
     project_path = sys.argv[1]
-    config = lire_json("C:\\StudioIA-Next\\config.json")
+    config = lire_json(str(paths.config_path()))
     project = lire_json(os.path.join(project_path, "project.json"))
 
     # Correction anti-crash : garantir que les sous-dossiers existent avant d'ecrire

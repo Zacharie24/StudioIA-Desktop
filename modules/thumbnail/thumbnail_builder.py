@@ -3,6 +3,15 @@ from pathlib import Path
 from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
 
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent
+    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
+        _rac = _rac.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
+
 def log(msg):
     print(f"[THUMB] {msg}")
 
@@ -346,7 +355,7 @@ def creer_thumbnail(project_path, data, style_key="6"):
 
 def choisir_style():
     import sys
-    sys.path.insert(0, "C:\\StudioIA\\modules\\utils")
+    sys.path.insert(0, str(paths.MODULES_DIR / "utils"))
     from timeout_input import choisir_avec_timeout
     print("\n[THUMB] Style thumbnail :")
     for k, v in STYLES.items():

@@ -1,6 +1,15 @@
 ﻿import json, os, sys, requests
 from pathlib import Path
 
+try:
+    from core import paths
+except ImportError:
+    _rac = Path(__file__).resolve().parent
+    while not (_rac / "core" / "paths.py").exists() and _rac.parent != _rac:
+        _rac = _rac.parent
+    sys.path.insert(0, str(_rac))
+    from core import paths
+
 def log(msg):
     print(f"[ANTI-REPEAT] {msg}")
 
@@ -102,7 +111,7 @@ Ecris le chapitre directement :"""
 def main():
     project_path = sys.argv[1]
     pjson = os.path.join(project_path, "project.json")
-    config = lire_json("C:\\StudioIA\\config.json")
+    config = lire_json(str(paths.config_path()))
     data = lire_json(pjson)
 
     sujet    = data["sujet"]
@@ -158,7 +167,7 @@ def main():
         for ch_id in chapitres_a_regenerer:
             ch_info = next((c for c in chapitres if c["id"] == ch_id), None)
             if ch_info:
-                print(f"  - {ch_id} : {ch_info[\"titre\"]}")
+                print(f"  - {ch_id} : {ch_info.get('titre')}")
         print("=" * 50)
         reponse = input("  Voulez-vous regenerer ces chapitres ? (o/n) : ").strip().lower()
         if reponse != "o":
